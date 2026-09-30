@@ -188,7 +188,24 @@
     return 'date,valeur\n' + ds.values.map((v, i) => `${ds.dates ? ds.dates[i] : i + 1},${v}`).join('\n');
   }
 
+  // Icônes de chapitre : dessin au trait sur une grille 24×24, couleur héritée (currentColor)
+  const ICONS = {
+    intro: '<path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/>',
+    anatomie: '<path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/>',
+    stationnarite: '<path d="M3 12h18" stroke-dasharray="2 3"/><path d="M3 12c1.5-4 3-4 4.5 0s3 4 4.5 0 3-4 4.5 0 3 4 4.5 0"/>',
+    acf: '<path d="M4 20h16"/><path d="M6.5 20V5"/><path d="M10.5 20v-9"/><path d="M14.5 20v-5"/><path d="M18.5 20v-2.5"/>',
+    arma: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/><circle cx="12" cy="12" r="2"/>',
+    lissage: '<path d="M3 17c4 0 5-10 9-10s5 6 9 6"/><path d="M5 13h.01M8.5 10.5h.01M15.5 12.5h.01M19 9.5h.01" stroke-width="3"/>',
+    sarima: '<path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/>',
+    evaluation: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+    labo: '<path d="M9 3h6M10 3v6l-5.2 9.1A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-2.9L14 9V3"/><path d="M7.4 15h9.2"/>',
+    cas: '<rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/>',
+    exercices: '<path d="M4 20l1.2-4.2L16.5 4.5l3 3L8.2 18.8z"/><path d="m14.5 6.5 3 3"/>',
+  };
+  const icon = (id, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[id] || ''}</svg>`;
+
   root.UI = {
+    icon,
     STATE, store, addDataset, getDataset, onDatasets: (f) => listeners.push(f), esc, $, $$,
     f2, fp, fmtNum, MOIS, timeAxis, ctl, bind, val, num, int, block, formula, pyCode, wireCopy, copyText,
     quiz, wireQuiz, table, stats, pill, typeset, tick, transformSeries, lambdaOptions, parseLambda, lambdaTex, datasetCsv,

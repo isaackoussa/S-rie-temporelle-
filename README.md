@@ -15,7 +15,22 @@ python3 -m http.server 8000
 # puis ouvrir http://localhost:8000
 ```
 
-Ouvrir `index.html` directement (file://) fonctionne aussi. Le site peut être publié tel quel sur GitHub Pages.
+Ouvrir `index.html` directement (file://) fonctionne aussi, sans l’installation ni le mode hors ligne.
+
+## Installer comme application
+
+L’atelier est une application web installable (PWA) : icône sur l’écran d’accueil, fenêtre dédiée,
+fonctionnement hors ligne (`manifest.webmanifest`, `sw.js`, icônes dans `icons/`).
+
+1. Publier le site : sur GitHub, **Settings → Pages → Branch : `main`, dossier `/ (root)`**. L’adresse sera
+   `https://<utilisateur>.github.io/S-rie-temporelle-/`.
+2. Ouvrir cette adresse puis :
+   - **Android / Chrome** : menu ⋮ → *Installer l’application* (ou le bouton « Installer l’application » du menu de l’atelier) ;
+   - **iPhone / iPad (Safari)** : *Partager* → *Sur l’écran d’accueil* ;
+   - **Ordinateur (Chrome, Edge)** : icône d’installation à droite de la barre d’adresse.
+
+Après une modification des fichiers, incrémentez `VERSION` dans `sw.js` pour que les appareils déjà
+installés récupèrent la nouvelle version.
 
 ## Chapitres
 

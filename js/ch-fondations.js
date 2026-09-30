@@ -51,7 +51,12 @@
       </div>`)}
 
       ${block('Plan de l’atelier', `<nav class="map">${CH.filter((c) => c.id !== 'intro').map((c) =>
-        `<a href="#${c.id}"><span class="t">Chapitre ${CH.indexOf(c)}</span><span class="n">${c.short}</span><span class="d">${c.desc}</span></a>`).join('')}</nav>`)}
+        `<a href="#${c.id}"><span class="map-top">${root.UI.icon(c.id, 'ico map-ico')}<span class="t">Chapitre ${CH.indexOf(c)}</span></span><span class="n">${c.short}</span><span class="d">${c.desc}</span></a>`).join('')}</nav>`)}
+
+      ${block('Installer l’application', `<div class="install-card">
+        <img src="icons/icon.svg" alt="Icône de l’Atelier Séries Temporelles" width="88" height="88">
+        <div class="install-text" id="install-text"></div>
+      </div>`)}
 
       ${block('Reproduire en Python', `<div class="prose"><p>Chaque chapitre se termine par le code équivalent en Python. Environnement conseillé :</p></div>` + pyCode(
 `# pip install numpy pandas matplotlib statsmodels
@@ -66,6 +71,24 @@ y = y.asfreq("MS")          # fréquence explicite : début de mois
 y.plot(title="Passagers aériens (milliers)")
 plt.show()`))}
       `;
+      // Carte d'installation : le texte dépend de l'appareil et du contexte
+      const inst = root.AppInstall;
+      const fillInstall = () => {
+        const box = el.querySelector('#install-text');
+        if (!box || !inst) return;
+        let html = '<h3>Atelier Séries Temporelles sur votre écran d’accueil</h3>';
+        if (inst.standalone) html += '<p>L’application est installée et fonctionne hors ligne. Bon travail !</p>';
+        else if (!inst.supported) html += '<p>Dans cette vue intégrée, l’installation n’est pas possible. Ouvrez la version publiée du site (par exemple sur GitHub Pages) dans Chrome, Edge ou Safari : l’application s’installe alors avec cette icône et fonctionne hors ligne.</p>';
+        else if (inst.prompt) html += '<p>Ajoutez l’atelier à votre écran d’accueil ou à votre bureau : il s’ouvre dans sa propre fenêtre, avec cette icône, et fonctionne sans connexion.</p><div class="controls"><button type="button" id="intro-install">Installer l’application</button></div>';
+        else if (inst.ios) html += '<p>Sur iPhone ou iPad, dans Safari : touchez <strong>Partager</strong> <span aria-hidden="true">⎋</span> puis <strong>Sur l’écran d’accueil</strong>. L’atelier apparaît avec cette icône et fonctionne hors ligne.</p>';
+        else html += '<p>Dans Chrome ou Edge, utilisez l’icône d’installation à droite de la barre d’adresse, ou le menu ⋮ puis <strong>Installer l’application</strong> (sur Android : <strong>Ajouter à l’écran d’accueil</strong>). L’atelier s’ouvre alors dans sa propre fenêtre et fonctionne hors ligne.</p>';
+        box.innerHTML = html;
+        const b = box.querySelector('#intro-install');
+        if (b) b.addEventListener('click', () => inst.ask());
+      };
+      if (inst) inst.listeners.push(fillInstall);
+      fillInstall();
+
       const ax = timeAxis(air);
       plot(el.querySelector('#intro-chart'), {
         title: 'Passagers aériens internationaux, 1949–1960 (milliers)', height: 300, xLabel: ax.label, xTicks: ax.ticks,

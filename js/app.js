@@ -14,7 +14,7 @@
   };
 
   // Sommaire
-  $('#toc').innerHTML = CH.map((c, i) => `<li><a href="#${c.id}" data-id="${c.id}"><span class="t">t = ${i}</span><span>${c.short}</span></a></li>`).join('');
+  $('#toc').innerHTML = CH.map((c, i) => `<li><a href="#${c.id}" data-id="${c.id}">${root.UI.icon(c.id)}<span>${c.short}</span><span class="t">t = ${i}</span></a></li>`).join('');
 
   // Petite courbe AirPassengers dans l'en-tête
   (function spark() {
@@ -33,6 +33,31 @@
   };
   $('#theme-toggle').addEventListener('click', () => { theme = themes[(themes.indexOf(theme) + 1) % 3]; store.set('theme', theme); applyTheme(); });
   applyTheme();
+
+  // Installation comme application (PWA) : service worker + invite d'installation du navigateur
+  const install = { prompt: null, listeners: [] };
+  const framed = (() => { try { return root.top !== root; } catch (e) { return true; } })();
+  install.standalone = root.matchMedia('(display-mode: standalone)').matches || root.navigator.standalone === true;
+  install.ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  install.supported = 'serviceWorker' in navigator && root.isSecureContext && !framed;
+  install.notify = () => install.listeners.forEach((f) => f());
+  install.ask = async () => {
+    if (!install.prompt) return false;
+    install.prompt.prompt();
+    const choice = await install.prompt.userChoice;
+    install.prompt = null; install.notify();
+    return choice.outcome === 'accepted';
+  };
+  root.AppInstall = install;
+  if (install.supported) {
+    root.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+  root.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); install.prompt = e; install.notify(); });
+  root.addEventListener('appinstalled', () => { install.prompt = null; install.standalone = true; install.notify(); });
+  const installBtn = $('#install-btn');
+  const syncInstallBtn = () => { installBtn.hidden = !install.prompt; };
+  install.listeners.push(syncInstallBtn);
+  installBtn.addEventListener('click', () => install.ask());
 
   // Menu mobile : tiroir latéral ouvert par le bouton ☰
   const nav = $('#nav'), menuBtn = $('#menu-btn'), scrim = $('#scrim');
@@ -68,6 +93,8 @@
       art.innerHTML += `<div class="callout bad"><p>Erreur de rendu : ${root.UI.esc(err.message)}</p></div>`;
       console.error(err);
     }
+    const eb = art.querySelector('.ch-head .eyebrow');
+    if (eb) eb.insertAdjacentHTML('afterbegin', root.UI.icon(ch.id));
     const prev = CH[i - 1], next = CH[i + 1];
     art.insertAdjacentHTML('beforeend', `<nav class="pager">${prev ? `<a href="#${prev.id}"><span>← chapitre ${i - 1}</span>${prev.short}</a>` : ''}${next ? `<a class="next" href="#${next.id}"><span>chapitre ${i + 1} →</span>${next.short}</a>` : ''}</nav>`);
     wireCopy(art);
