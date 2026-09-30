@@ -322,7 +322,7 @@ tr.click:hover td { background: var(--panel-2); }
 #exC h3 { margin: 0; }
 
 /* ------------------------------------------------ Icône d'application et en-tête mobile */
-.app-icon { display: block; flex: none; border-radius: 12px; box-shadow: 0 1px 3px rgb(20 30 80 / 0.25); }
+.app-icon { display: block; flex: none; border-radius: 12px; box-shadow: 0 1px 3px rgb(20 30 80 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.1); }
 .brand-row { display: flex; align-items: center; gap: 10px; }
 .topbar { display: none; }
 .scrim { display: none; }
