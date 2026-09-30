@@ -30,6 +30,8 @@ Ouvrir `index.html` directement (file://) fonctionne aussi. Le site peut être p
 | 6 | Box-Jenkins & SARIMA | CSS, reparamétrisation de Jones, hessien, AIC/AICc/BIC, diagnostic | estimation, recherche auto, diagnostic des résidus |
 | 7 | Évaluation & validation | MAE, RMSE, MAPE, MASE, couverture, origine glissante | comparaison de 6 modèles, erreur par horizon |
 | 8 | Labo : vos données | pipeline complet | import CSV, choix automatique, prévision exportable, script Python |
+| 9 | Études de cas | 4 analyses complètes commentées étape par étape : AirPassengers (Box-Jenkins), ventes additives à vérité connue, charge électrique journalière, marche aléatoire et régression fallacieuse | chiffres recalculés en direct, code Python par étape |
+| 10 | Exercices appliqués | identification ARMA, diagnostic de stationnarité, calculs à la main, défi de prévision sur données cachées | énoncés aléatoires, corrections détaillées, score |
 
 ## Moteur numérique (`js/stats.js`)
 
@@ -60,7 +62,7 @@ js/stats.js           moteur numérique (navigateur + Node)
 js/data.js            jeux de données (AirPassengers + séries simulées)
 js/charts.js          graphiques SVG avec survol
 js/ui.js              contrôles, quiz, blocs de code
-js/ch-*.js            chapitres
+js/ch-*.js            chapitres (ch-cas.js : études de cas, ch-exercices.js : exercices)
 js/app.js             navigation
 vendor/               MathJax 3.2.2 (Apache 2.0), embarqué pour fonctionner hors ligne
 ```

@@ -46,6 +46,8 @@
     return list;
   }
 
+  root.TSModels = { forecasters, MODEL_COLORS };
+
   // ================================================================ 7. Évaluation
   CH.push({
     id: 'evaluation', title: 'Évaluer une prévision', short: 'Évaluation & validation',

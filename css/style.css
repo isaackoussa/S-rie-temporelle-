@@ -254,6 +254,53 @@ tr.click:hover td { background: var(--panel-2); }
 .dropzone { border: 1.5px dashed var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
 .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
 
+/* ------------------------------------------------ Études de cas */
+.case-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.case-tabs button {
+  display: grid; gap: 2px; text-align: left; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px 14px; font-weight: 400;
+}
+.case-tabs button:hover { border-color: var(--accent); }
+.case-tabs button[aria-selected="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.ct-title { font-family: var(--f-display); font-size: 17px; font-weight: 600; }
+.ct-tag { font-size: 13px; color: var(--ink-2); }
+#case-body { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+.case-brief {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px 24px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px;
+}
+.case-brief > div { min-width: 0; }
+.case-brief .k { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.case-brief p { margin: 4px 0 0; font-size: 14.5px; }
+.chip { display: inline-block; font-size: 12.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); text-decoration: none; margin: 2px 2px 0 0; color: var(--accent); }
+.chip:hover { border-color: var(--accent); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 30px; grid-template-columns: minmax(0, 1fr); }
+.step { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; }
+.step-num {
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-mono); font-weight: 500;
+  background: var(--accent); color: var(--accent-ink); position: sticky; top: 12px;
+}
+.step-body { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); min-width: 0; border-left: 1px dashed var(--line); padding-left: 18px; margin-left: -34px; padding-bottom: 4px; }
+.step-body h3 { margin-top: 6px; }
+.step-fig { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.step-take { max-width: none; }
+.step-py summary { cursor: pointer; font-size: 13.5px; color: var(--accent); font-weight: 500; padding: 4px 0; }
+.step-py[open] summary { margin-bottom: 8px; }
+@media (max-width: 600px) {
+  .step { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .step-num { position: static; }
+  .step-body { margin-left: 0; padding-left: 0; border-left: 0; }
+}
+
+/* ------------------------------------------------ Exercices */
+.ex-score { justify-self: end; font-size: 13px; color: var(--ink-3); font-family: var(--f-mono); }
+.ex-score strong { color: var(--ink); }
+.ex-answers button.right { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+.ex-answers button.wrong { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.ex-answers button:disabled { cursor: default; opacity: 1; }
+.ex-q { font-size: 16.5px; margin: 0; max-width: 72ch; }
+#exC h3 { margin: 0; }
+
 /* ------------------------------------------------ Icône d'application et en-tête mobile */
 .app-icon { display: block; flex: none; border-radius: 12px; box-shadow: 0 1px 3px rgb(20 30 80 / 0.25); }
 .brand-row { display: flex; align-items: center; gap: 10px; }
