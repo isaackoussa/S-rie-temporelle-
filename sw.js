@@ -3,7 +3,7 @@
  * Stratégie « cache d'abord » pour les fichiers de l'application, réseau pour le reste (polices).
  * Changer VERSION à chaque publication pour forcer la mise à jour du cache.
  */
-const VERSION = 'atelier-v5';
+const VERSION = 'atelier-v6';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/stats.js', 'js/data.js', 'js/charts.js', 'js/ui.js',

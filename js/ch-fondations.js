@@ -3,7 +3,7 @@
  */
 (function (root) {
   'use strict';
-  const { ctl, bind, val, num, int, block, formula, pyCode, quiz, table, stats, pill, f2, fp, $, timeAxis, transformSeries,
+  const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, $, timeAxis, transformSeries,
     lambdaOptions, parseLambda, getDataset, STATE, typeset } = root.UI;
   const { plot } = root.Charts;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
@@ -46,7 +46,7 @@
           \[\rho(h) = \gamma(h)/\gamma(0) \quad \text{(cas stationnaire)}\]`)}
         ${formula('Bruit blanc', R`\[\varepsilon_t \sim \mathrm{BB}(0, \sigma^2) \iff \mathbb{E}[\varepsilon_t]=0,\ \operatorname{Var}(\varepsilon_t)=\sigma^2,\ \operatorname{Cov}(\varepsilon_t,\varepsilon_s)=0\ (t\neq s)\]
           <p class="small muted">Non corrélé ne veut pas dire indépendant. Le bruit blanc « fort » (i.i.d.) est un cas particulier.</p>`)}
-        ${formula('Polynômes ARMA (convention R / statsmodels)', R`\[\phi(B) = 1 - \phi_1 B - \dots - \phi_p B^p\]
+        ${formula('Polynômes ARMA (convention de R)', R`\[\phi(B) = 1 - \phi_1 B - \dots - \phi_p B^p\]
           \[\theta(B) = 1 + \theta_1 B + \dots + \theta_q B^q\]`)}
       </div>`)}
 
@@ -58,18 +58,19 @@
         <div class="install-text" id="install-text"></div>
       </div>`)}
 
-      ${block('Reproduire en Python', `<div class="prose"><p>Chaque chapitre se termine par le code équivalent en Python. Environnement conseillé :</p></div>` + pyCode(
-`# pip install numpy pandas matplotlib statsmodels
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import statsmodels.api as sm
+      ${block('Reproduire en R', `<div class="prose"><p>Chaque chapitre se termine par le code équivalent en R, avec les packages de référence <code>forecast</code> (Hyndman), <code>tseries</code> et <code>urca</code>. Environnement conseillé :</p></div>` + rCode(
+`# install.packages(c("forecast", "tseries", "urca"))
+library(forecast)   # ets, auto.arima, BoxCox, ndiffs, accuracy, tsCV
+library(tseries)    # adf.test, kpss.test, jarque.bera.test
 
-# AirPassengers : fichier CSV classique (colonnes Month, #Passengers)
-y = pd.read_csv("AirPassengers.csv", parse_dates=["Month"], index_col="Month")["#Passengers"]
-y = y.asfreq("MS")          # fréquence explicite : début de mois
-y.plot(title="Passagers aériens (milliers)")
-plt.show()`))}
+# AirPassengers est fourni avec R (package datasets) : série mensuelle 1949-1960
+y <- AirPassengers
+class(y); frequency(y); start(y); end(y)   # "ts", 12, 1949 1, 1960 12
+autoplot(y) + ggplot2::ggtitle("Passagers aériens (milliers)")
+
+# Vos données : construire un objet ts à partir d'un CSV
+# df <- read.csv("mes_donnees.csv")
+# y  <- ts(df$valeur, start = c(2015, 1), frequency = 12)`))}
       `;
       // Carte d'installation : le texte dépend de l'appareil et du contexte
       const inst = root.AppInstall;
@@ -148,18 +149,20 @@ plt.show()`))}
         ${formula('', R`\[F_T = \max\!\Big(0,\ 1 - \frac{\operatorname{Var}(R_t)}{\operatorname{Var}(T_t + R_t)}\Big) \qquad F_S = \max\!\Big(0,\ 1 - \frac{\operatorname{Var}(R_t)}{\operatorname{Var}(S_t + R_t)}\Big)\]`)}
         <div class="prose"><p>Un \(F_S\) supérieur à 0,64 est le seuil utilisé par <code>forecast::nsdiffs</code> pour recommander une différence saisonnière (chapitre 6).</p></div>`)}
 
-      ${block('En Python', pyCode(
-`from statsmodels.tsa.seasonal import seasonal_decompose, STL
-
-dec = seasonal_decompose(y, model="multiplicative", period=12)   # MA centrée 2x12
-dec.plot()
+      ${block('En R', rCode(
+`dec <- decompose(AirPassengers, type = "multiplicative")   # MA centrée 2x12
+plot(dec)
 
 # STL : saison évolutive, robuste aux points aberrants, pas de bords manquants
-stl = STL(np.log(y), period=12, robust=True).fit()
-stl.plot()
+fit <- stl(log(AirPassengers), s.window = 13, robust = TRUE)   # s.window = "periodic" : saison figée
+plot(fit)
 
-# Force de la saisonnalité (Wang, Smith & Hyndman)
-F_S = max(0, 1 - np.var(stl.resid) / np.var(stl.seasonal + stl.resid))`))}
+# Force de la tendance et de la saisonnalité (Wang, Smith & Hyndman)
+comp <- fit$time.series
+R <- comp[, "remainder"]
+F_T <- max(0, 1 - var(R) / var(comp[, "trend"] + R))
+F_S <- max(0, 1 - var(R) / var(comp[, "seasonal"] + R))
+# forecast::mstl() gère plusieurs périodes saisonnières`))}
 
       ${block('Vérifier', quiz([
         { q: 'Sur AirPassengers, l’amplitude des pics estivaux grandit avec le niveau. Quelle décomposition choisir ?', opts: ['Additive', 'Multiplicative, ou additive sur le logarithme', 'Aucune : la série n’est pas saisonnière'], a: 1, expl: 'Une amplitude proportionnelle au niveau est la signature d’une saisonnalité multiplicative. Le log la rend additive.' },
@@ -328,22 +331,26 @@ F_S = max(0, 1 - np.var(stl.resid) / np.var(stl.seasonal + stl.resid))`))}
           <div id="st-verdict2" class="callout"></div>
         </div>`)}
 
-      ${block('En Python', pyCode(
-`from statsmodels.tsa.stattools import adfuller, kpss
-from scipy.stats import boxcox
+      ${block('En R', rCode(
+`library(tseries); library(urca); library(forecast)
+z <- log(AirPassengers)
 
-stat, p, usedlag, nobs, crit, icbest = adfuller(np.log(y), regression="c", autolag="AIC")
-print(f"ADF = {stat:.3f}, p = {p:.3f}, retards = {usedlag}, critiques = {crit}")
+# ADF avec sélection des retards par AIC (comme l'atelier), régression avec constante
+summary(ur.df(z, type = "drift", lags = 12, selectlags = "AIC"))
+adf.test(z)            # variante tseries : constante + tendance, k = trunc((n-1)^(1/3))
 
-stat, p, lags, crit = kpss(np.log(y), regression="c", nlags="legacy")
-print(f"KPSS = {stat:.3f}, p = {p:.3f}")
+# KPSS : H0 = stationnarité ; lags = "long" : trunc(12 (n/100)^(1/4)) retards
+summary(ur.kpss(z, type = "mu", lags = "long"))
+kpss.test(z, null = "Level")
 
-# Box-Cox avec λ estimé par maximum de vraisemblance
-y_bc, lam = boxcox(y)
+# Box-Cox : lambda estimé (méthode de Guerrero par défaut)
+lambda <- BoxCox.lambda(AirPassengers)
+yb <- BoxCox(AirPassengers, lambda)
 
-# Différence simple puis saisonnière : (1-B)(1-B^12) log y
-w = np.log(y).diff().diff(12).dropna()
-print(adfuller(w)[1], kpss(w, nlags="legacy")[1])`))}
+# Différences suggérées puis série stationnarisée (1-B)(1-B^12) log y
+ndiffs(z); nsdiffs(z)
+w <- diff(diff(z, lag = 12))
+adf.test(w); kpss.test(w)   # avertissement « p-value smaller/greater than printed » : p-valeur bornée à [0,01 ; 0,10]`))}
 
       ${block('Vérifier', quiz([
         { q: 'L’ADF donne p = 0,32 et le KPSS p < 0,01. Que conclure ?', opts: ['La série est stationnaire', 'La série a vraisemblablement une racine unitaire : on différencie', 'Il faut augmenter le nombre de retards de l’ADF jusqu’à rejeter'], a: 1, expl: 'ADF ne rejette pas H0 (racine unitaire) et KPSS rejette H0 (stationnarité) : les deux tests concordent vers I(1).' },
@@ -465,20 +472,19 @@ print(adfuller(w)[1], kpss(w, nlags="legacy")[1])`))}
         ${formula('', R`\[I(f_k) = \frac1n\Big|\sum_{t=1}^{n}(x_t-\bar x)\,e^{-2i\pi f_k t}\Big|^2,\qquad f_k = \frac kn,\ k = 1,\dots,\lfloor n/2\rfloor\]
         <p class="small muted">Un pic à la fréquence f révèle un cycle de période 1/f. Le périodogramme n’est pas convergent (sa variance ne diminue pas avec n) : on le lisse en pratique (fenêtres de Daniell, méthode de Welch).</p>`)}`)}
 
-      ${block('En Python', pyCode(
-`from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.tsa.stattools import acf, pacf
-from statsmodels.stats.diagnostic import acorr_ljungbox
-from scipy.signal import periodogram
+      ${block('En R', rCode(
+`library(forecast)
+w <- diff(diff(log(AirPassengers), lag = 12))
 
-w = np.log(y).diff().diff(12).dropna()
-fig, ax = plt.subplots(1, 2, figsize=(11, 3.5))
-plot_acf(w, lags=36, ax=ax[0])                    # bandes de Bartlett par défaut
-plot_pacf(w, lags=36, ax=ax[1], method="ldb")     # Durbin-Levinson (estimateur biaisé)
+acf(w, lag.max = 36, ci.type = "ma")   # bandes de Bartlett (ci.type = "white" : ±1,96/√n)
+pacf(w, lag.max = 36)                  # Durbin-Levinson
+ggtsdisplay(w, lag.max = 36)           # série + ACF + PACF en une figure
 
-print(acorr_ljungbox(w, lags=[12, 24]))           # colonnes lb_stat, lb_pvalue
+Box.test(w, lag = 12, type = "Ljung-Box")
+Box.test(w, lag = 24, type = "Ljung-Box")
 
-f, Pxx = periodogram(np.log(y).diff().dropna())   # pic attendu à f = 1/12`))}
+spec.pgram(diff(log(AirPassengers)), taper = 0, log = "no")   # périodogramme brut
+spectrum(diff(log(AirPassengers)), spans = c(3, 3))            # lissé (Daniell)`))}
 
       ${block('Vérifier', quiz([
         { q: 'La PACF est significative aux retards 1 et 2 puis nulle, l’ACF décroît de façon amortie. Quel modèle ?', opts: ['MA(2)', 'AR(2)', 'ARMA(2, 2)'], a: 1, expl: 'Coupure de la PACF après p = 2 et ACF amortie : signature d’un AR(2).' },

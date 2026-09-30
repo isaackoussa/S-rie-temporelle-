@@ -3,7 +3,7 @@
  */
 (function (root) {
   'use strict';
-  const { ctl, bind, val, num, int, block, formula, pyCode, quiz, table, stats, pill, f2, fp, $, $$, timeAxis, esc,
+  const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, $, $$, timeAxis, esc,
     getDataset, addDataset, STATE, tick, wireCopy, copyText, datasetCsv } = root.UI;
   const { plot } = root.Charts;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
@@ -96,24 +96,30 @@
         <div id="cv-table"></div>
       </div>`)}
 
-      ${block('En Python', pyCode(
-`import numpy as np
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+      ${block('En R', rCode(
+`library(forecast)
+y <- AirPassengers
+train <- window(y, end = c(1958, 12))
+test  <- window(y, start = c(1959, 1))
 
-def mase(y_test, y_pred, y_train, m=12):
-    scale = np.mean(np.abs(y_train[m:] - y_train[:-m]))
-    return np.mean(np.abs(y_test - y_pred)) / scale
+prev <- list(
+  naif_saisonnier = snaive(train, h = 24),
+  holt_winters    = hw(train, seasonal = "multiplicative", h = 24),
+  ets_auto        = forecast(ets(train), h = 24),
+  sarima_auto     = forecast(auto.arima(train, lambda = 0), h = 24)
+)
+# accuracy() calcule la MASE avec le naïf saisonnier in-sample, comme l'atelier
+t(sapply(prev, function(f) accuracy(f, test)["Test set", c("MAE", "RMSE", "MAPE", "MASE")]))
 
-# Validation à origine glissante : erreur absolue par horizon
-h, start, step = 12, 72, 3
-errors = []
-for T in range(start, len(y) - h + 1, step):
-    train, test = y.iloc[:T], y.iloc[T:T + h]
-    fc = ExponentialSmoothing(train, trend="add", seasonal="mul", seasonal_periods=12).fit().forecast(h)
-    errors.append(np.abs(test.values - fc.values))
-mae_by_h = np.mean(errors, axis=0)
+# Couverture de l'intervalle à 95 %
+sapply(prev, function(f) mean(test >= f$lower[, "95%"] & test <= f$upper[, "95%"]))
 
-# Outils dédiés : sktime (ExpandingWindowSplitter), statsforecast.cross_validation, darts.backtest`))}
+# Validation à origine glissante : erreurs par horizon (matrice n × h)
+f_hw <- function(x, h) hw(x, seasonal = "multiplicative", h = h)
+e <- tsCV(y, f_hw, h = 12, initial = 72)
+mae_par_h <- colMeans(abs(e), na.rm = TRUE)
+plot(mae_par_h, type = "b", xlab = "horizon h", ylab = "MAE")
+# Test de Diebold-Mariano entre deux modèles : dm.test(e1, e2, h = 1)`))}
 
       ${block('Vérifier', quiz([
         { q: 'Un modèle a une MASE de 1,3 sur le test. Qu’en déduire ?', opts: ['Il fait 30 % mieux que le naïf saisonnier', 'Son erreur absolue moyenne est 30 % plus grande que celle du naïf saisonnier in-sample', 'Il est biaisé'], a: 1, expl: 'MASE > 1 : pire que la référence naïve (mesurée in-sample). À ce stade le modèle n’apporte rien.' },
@@ -243,44 +249,48 @@ mae_by_h = np.mean(errors, axis=0)
     return d.toISOString().slice(0, 10);
   }
 
-  function labPython(ds, plan, best, H) {
-    const s = ds.period > 1 ? ds.period : 0;
-    const lam = plan.lambda === null ? 'None' : plan.lambda;
-    return `import numpy as np, pandas as pd
-from statsmodels.tsa.stattools import adfuller, kpss
-from statsmodels.tsa.seasonal import STL
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+  function labR(ds, plan, best, H) {
+    const s = ds.period > 1 ? ds.period : 1;
+    const lam = plan.lambda === null ? 'NULL' : String(plan.lambda);
+    const col = /^[A-Za-z.][A-Za-z0-9._]*$/.test(plan.valueName) ? `df$${plan.valueName}` : `df[["${plan.valueName}"]]`;
+    const pos = ds.values.every((v) => v > 0);
+    const o = best.order;
+    const model = {
+      sarima: o ? `fit <- Arima(y, order = c(${o.p}, ${o.d}, ${o.q})${s > 1 ? `, seasonal = list(order = c(${o.P}, ${o.D}, ${o.Q}), period = ${s})` : ''},
+             lambda = ${lam})
+summary(fit)
+checkresiduals(fit)                     # résidus, ACF, Ljung-Box
+fc <- forecast(fit, h = ${H}, level = 95)` : `fc <- forecast(auto.arima(y, lambda = ${lam}), h = ${H}, level = 95)`,
+      hw: `fc <- hw(y, seasonal = "${pos ? 'multiplicative' : 'additive'}", h = ${H}, level = 95)`,
+      snaive: `fc <- snaive(y, h = ${H}, level = 95)`,
+      holt: `fc <- holt(y, damped = TRUE, h = ${H}, level = 95)`,
+      ses: `fc <- ses(y, h = ${H}, level = 95)`,
+      drift: `fc <- rwf(y, drift = TRUE, h = ${H}, level = 95)`,
+      naive: `fc <- naive(y, h = ${H}, level = 95)`,
+    }[best.id];
+    return `library(forecast); library(tseries)
 
-df = pd.read_csv("mes_donnees.csv")                       # adaptez le nom du fichier
-y = pd.Series(df["${plan.valueName}"].values${plan.hasDates ? `, index=pd.to_datetime(df["${plan.dateName}"])` : ''})
-y = y.interpolate()                                       # valeurs manquantes : interpolation linéaire
+df <- read.csv("mes_donnees.csv")         # adaptez le nom du fichier (sep = ";", dec = "," si besoin)
+y  <- ts(${col}, start = ${root.UI.rStart(ds)}, frequency = ${s})
+y  <- na.interp(y)                        # valeurs manquantes : interpolation
+autoplot(y)
+${s > 1 ? `
+# 1. Structure : décomposition STL${pos ? ' du logarithme' : ''}
+plot(stl(${pos ? 'log(y)' : 'y'}, s.window = 13, robust = TRUE))
+` : ''}
+# 2. Stationnarité : ${plan.lambda === null ? 'pas de transformation' : plan.lambda === 0 ? 'logarithme' : 'Box-Cox, lambda = ' + plan.lambda}, d = ${plan.d}, D = ${plan.D}
+lambda <- ${lam}
+z <- ${plan.lambda === null ? 'y' : 'BoxCox(y, lambda)'}
+w <- z${plan.d ? `\nw <- diff(w, differences = ${plan.d})` : ''}${plan.D ? `\nw <- diff(w, lag = ${s}, differences = ${plan.D})` : ''}
+adf.test(w); kpss.test(w)
+ggtsdisplay(w, lag.max = ${s > 1 ? 3 * s : 30})   # série + ACF + PACF
+ndiffs(z); ${s > 1 ? 'nsdiffs(z)' : ''}
 
-# 1. Structure${s ? `\nstl = STL(y, period=${s}, robust=True).fit(); stl.plot()` : ''}
-
-# 2. Stationnarité (transformation retenue : ${plan.lambda === null ? 'aucune' : plan.lambda === 0 ? 'log' : 'Box-Cox λ=' + plan.lambda}, d=${plan.d}, D=${plan.D})
-z = ${plan.lambda === null ? 'y' : plan.lambda === 0 ? 'np.log(y)' : `(y**${plan.lambda} - 1) / ${plan.lambda}`}
-w = z${plan.d ? '.diff()'.repeat(plan.d) : ''}${plan.D ? `.diff(${s})` : ''}
-w = w.dropna()
-print("ADF p =", adfuller(w)[1], " KPSS p =", kpss(w, nlags="legacy")[1])
-
-# 3. Modèle retenu : ${best.name}
-${best.id === 'sarima' ? `res = SARIMAX(z, order=(${best.order.p}, ${best.order.d}, ${best.order.q}), seasonal_order=(${best.order.P}, ${best.order.D}, ${best.order.Q}, ${s})).fit(disp=False)
-print(res.summary())
-fc = res.get_forecast(${H}).summary_frame(alpha=0.05)
-${plan.lambda === 0 ? 'fc = np.exp(fc)' : plan.lambda === null ? '' : `fc = (${plan.lambda} * fc + 1) ** (1 / ${plan.lambda})`}` :
-    best.id === 'hw' ? `res = ExponentialSmoothing(y, trend="add", seasonal="${ds.values.every((v) => v > 0) ? 'mul' : 'add'}", seasonal_periods=${s}).fit()
-fc = res.forecast(${H})` :
-    best.id === 'snaive' ? `fc = pd.Series(np.tile(y.values[-${s}:], ${Math.ceil(H / Math.max(s, 1))})[:${H}])` :
-    best.id === 'holt' ? `res = ExponentialSmoothing(y, trend="add", damped_trend=True).fit()
-fc = res.forecast(${H})` :
-    best.id === 'ses' ? `res = ExponentialSmoothing(y).fit()
-fc = res.forecast(${H})` :
-    best.id === 'drift' ? `slope = (y.iloc[-1] - y.iloc[0]) / (len(y) - 1)
-fc = y.iloc[-1] + slope * np.arange(1, ${H + 1})` :
-    `fc = pd.Series([y.iloc[-1]] * ${H})`}
+# 3. Modèle retenu par l'atelier : ${best.name}
+${model}
+autoplot(fc)
 print(fc)
-# lambda Box-Cox retenu : ${lam}`;
+write.csv(as.data.frame(fc), "prevision.csv")`;
   }
 
   CH.push({
@@ -291,7 +301,7 @@ print(fc)
       <header class="ch-head">
         <div class="eyebrow">Chapitre 8 · Pratique pure</div>
         <h1>Laboratoire : de vos données brutes à une prévision</h1>
-        <p class="lede">Collez ou importez un CSV. L’atelier enchaîne le diagnostic, la stationnarisation, la sélection de modèle sur un échantillon test et la prévision finale, puis génère le script Python correspondant.</p>
+        <p class="lede">Collez ou importez un CSV. L’atelier enchaîne le diagnostic, la stationnarisation, la sélection de modèle sur un échantillon test et la prévision finale, puis génère le script R correspondant.</p>
       </header>
 
       <div class="panel">
@@ -454,7 +464,7 @@ print(fc)
 
         // 6. Script
         const plan = { lambda, d, D, hasDates: di >= 0, dateName: di >= 0 ? parsed.names[di] : '', valueName: parsed.names[vi] };
-        html += sec('6 · Script Python reproductible', pyCode(labPython(ds, plan, { id: best.f.id, name: best.f.name, order: ctxFull.order || best.ctx.order }, H)));
+        html += sec('6 · Script R reproductible', rCode(labR(ds, plan, { id: best.f.id, name: best.f.name, order: ctxFull.order || best.ctx.order }, H)));
         out.innerHTML = html;
         wireCopy(out);
 

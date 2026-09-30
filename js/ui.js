@@ -1,6 +1,6 @@
 /*
  * ui.js — briques d'interface partagées par les chapitres :
- * contrôles, sélection de série, formatage, blocs de code Python, quiz, tableaux.
+ * contrôles, sélection de série, formatage, blocs de code R, quiz, tableaux.
  */
 (function (root) {
   'use strict';
@@ -99,17 +99,24 @@
   function block(label, inner) { return `<section class="block"><div class="label">${label}</div>${inner}</section>`; }
   function formula(title, tex) { return `<div class="formula">${title ? `<div class="ftitle">${title}</div>` : ''}${tex}</div>`; }
 
-  function highlightPy(code) {
-    const kw = /\b(import|from|as|def|return|for|in|if|else|elif|print|None|True|False|with|lambda|range)\b/g;
+  // Coloration minimale du R : commentaires, chaînes, mots-clés, opérateur d'affectation
+  function highlightR(code) {
+    const kw = /\b(function|if|else|for|in|while|repeat|return|next|break|TRUE|FALSE|NULL|NA|Inf|library|require)\b/g;
     return code.split('\n').map((line) => {
-      const i = line.indexOf('#');
+      // un # dans une chaîne ne commence pas un commentaire
+      let i = -1, q = null;
+      for (let k = 0; k < line.length; k++) {
+        const ch = line[k];
+        if (q) { if (ch === q) q = null; } else if (ch === '"' || ch === "'") q = ch; else if (ch === '#') { i = k; break; }
+      }
       let body = i >= 0 ? line.slice(0, i) : line, com = i >= 0 ? line.slice(i) : '';
-      body = esc(body).replace(/(&quot;[^&]*?&quot;|"[^"]*"|'[^']*')/g, '<span class="s">$1</span>').replace(kw, '<span class="k">$1</span>');
+      body = esc(body).replace(/(&quot;[^&]*?&quot;|'[^']*')/g, '<span class="s">$1</span>')
+        .replace(kw, '<span class="k">$1</span>').replace(/&lt;-|\|&gt;|%&gt;%/g, (m) => `<span class="k">${m}</span>`);
       return body + (com ? `<span class="c">${esc(com)}</span>` : '');
     }).join('\n');
   }
-  function pyCode(code, title = 'Python · statsmodels') {
-    return `<div class="code"><div class="code-title">${esc(title)}</div><pre data-raw="${esc(code)}">${highlightPy(code)}</pre>` +
+  function rCode(code, title = 'R · forecast, tseries') {
+    return `<div class="code"><div class="code-title">${esc(title)}</div><pre data-raw="${esc(code)}">${highlightR(code)}</pre>` +
       `<button class="ghost copy" type="button">Copier</button></div>`;
   }
   function wireCopy(rootEl) {
@@ -184,6 +191,23 @@
   }
   function lambdaTex(l) { return l === null ? 'aucune' : Math.abs(l) < 1e-12 ? '\\log' : `λ = ${f2(l, 2)}`; }
 
+  // Ligne R qui crée l'objet ts de la série : AirPassengers est fourni par R ; les autres séries
+  // sont écrites en clair (jusqu'à 600 valeurs) pour que le code s'exécute tel quel.
+  function rStart(ds) {
+    if (ds.dates && ds.freq === 'M') { const [yy, mm] = ds.dates[0].split('-'); return `c(${+yy}, ${+mm})`; }
+    if (ds.dates && ds.freq === 'Q') { const [yy, q] = ds.dates[0].split('-Q'); return `c(${+yy}, ${+q})`; }
+    if (ds.dates && ds.freq === 'Y') return String(+ds.dates[0]);
+    return '1';
+  }
+  function rSeries(ds, name = 'y') {
+    if (ds.id === 'air') return `${name} <- AirPassengers                 # fourni avec R`;
+    const freq = ds.period > 1 ? ds.period : 1;
+    const start = rStart(ds);
+    if (ds.values.length > 600) return `${name} <- ts(read.csv("serie.csv")$valeur, start = ${start}, frequency = ${freq})`;
+    const vals = ds.values.map((v) => +v.toFixed(4)).join(', ');
+    return `${name} <- ts(c(${vals}),\n        start = ${start}, frequency = ${freq})   # ${ds.name}`;
+  }
+
   function datasetCsv(ds) {
     return 'date,valeur\n' + ds.values.map((v, i) => `${ds.dates ? ds.dates[i] : i + 1},${v}`).join('\n');
   }
@@ -207,7 +231,7 @@
   root.UI = {
     icon,
     STATE, store, addDataset, getDataset, onDatasets: (f) => listeners.push(f), esc, $, $$,
-    f2, fp, fmtNum, MOIS, timeAxis, ctl, bind, val, num, int, block, formula, pyCode, wireCopy, copyText,
-    quiz, wireQuiz, table, stats, pill, typeset, tick, transformSeries, lambdaOptions, parseLambda, lambdaTex, datasetCsv,
+    f2, fp, fmtNum, MOIS, timeAxis, ctl, bind, val, num, int, block, formula, rCode, wireCopy, copyText,
+    quiz, wireQuiz, table, stats, pill, typeset, tick, transformSeries, lambdaOptions, parseLambda, lambdaTex, datasetCsv, rSeries, rStart,
   };
 })(window);

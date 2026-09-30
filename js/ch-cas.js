@@ -4,7 +4,7 @@
  */
 (function (root) {
   'use strict';
-  const { pyCode, table, stats, pill, f2, fp, $$, timeAxis, esc, getDataset, tick, typeset, wireCopy, store } = root.UI;
+  const { rCode, table, stats, pill, f2, fp, $$, timeAxis, esc, getDataset, tick, typeset, wireCopy, store } = root.UI;
   const { plot } = root.Charts;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
   const R = String.raw;
@@ -100,10 +100,12 @@
             layers: [{ type: 'bar', x: c.cy.amp.map((_, i) => i), y: c.cy.amp, name: 'amplitude', color: '--s1' }] });
         },
         takeaway: () => 'Une saisonnalité dont l’amplitude croît avec le niveau appelle une transformation logarithmique (ou un modèle multiplicatif).',
-        py: `year = y.index.year
-amp = y.groupby(year).agg(lambda v: v.max() - v.min())
-lvl = y.groupby(year).mean()
-print(np.corrcoef(amp, lvl)[0, 1])      # proche de 1 : multiplicatif`,
+        r: `library(forecast)
+y <- AirPassengers
+amp <- tapply(y, floor(time(y)), function(v) max(v) - min(v))   # amplitude par année
+lvl <- tapply(y, floor(time(y)), mean)                          # niveau par année
+cor(amp, lvl)                                                   # proche de 1 : multiplicatif
+barplot(amp, main = "Amplitude saisonnière par année")`,
       },
       {
         title: 'Stabiliser la variance par le logarithme',
@@ -113,9 +115,10 @@ print(np.corrcoef(amp, lvl)[0, 1])      # proche de 1 : multiplicatif`,
           plot(el, { title: 'log(passagers)', height: 220, xLabel: ax.label, xTicks: ax.ticks, layers: [{ type: 'line', x: c.log.map((_, i) => i), y: c.log, name: 'log X', color: '--s1', width: 1.5 }] });
         },
         takeaway: () => 'On modélise désormais log X. Les prévisions seront repassées à l’exponentielle à la fin.',
-        py: `z = np.log(y)
-from scipy.stats import boxcox
-_, lam = boxcox(y); print(lam)`,
+        r: `z <- log(y)
+BoxCox.lambda(y, method = "loglik")   # λ par vraisemblance, comme l'atelier
+BoxCox.lambda(y)                      # méthode de Guerrero (défaut de forecast)
+autoplot(z)`,
       },
       {
         title: 'Rendre la série stationnaire : choisir d et D',
@@ -130,10 +133,10 @@ _, lam = boxcox(y); print(lam)`,
           const a = TS.adf(c.w12);
           return `La différence saisonnière seule laisse un cas limite (ADF p = ${fp(a.pvalue)}). Avec d = 1 et D = 1, les deux tests concordent : W<sub>t</sub> fluctue autour de 0 avec une variance stable. On retient d = D = 1.`;
         },
-        py: `from statsmodels.tsa.stattools import adfuller, kpss
-for name, x in [("log", z), ("D12", z.diff(12)), ("d1 D12", z.diff(12).diff())]:
-    x = x.dropna()
-    print(name, adfuller(x)[1], kpss(x, nlags="legacy")[1])`,
+        r: `library(tseries)
+series <- list(log = z, D12 = diff(z, lag = 12), d1_D12 = diff(diff(z, lag = 12)))
+sapply(series, function(x) c(ADF_p = adf.test(x)$p.value, KPSS_p = kpss.test(x)$p.value))
+# adf.test/kpss.test bornent les p-valeurs à [0,01 ; 0,10] (tables interpolées)`,
       },
       {
         title: 'Identifier les ordres sur l’ACF et la PACF',
@@ -149,9 +152,9 @@ for name, x in [("log", z), ("D12", z.diff(12)), ("d1 D12", z.diff(12).diff())]:
           const others = c.acfSig.filter((h) => !top.some((t) => t[0] === h));
           return `Retards significatifs de l’ACF : <strong>${sigList(c.acfSig)}</strong>. Les deux pics dominants sont ${top.map(([h, v]) => `ρ̂(${h}) = ${f2(v, 2)}`).join(' et ')}, tous deux négatifs : un MA(1) pour la partie non saisonnière et un MA(1)₁₂ pour la partie saisonnière. ${others.length ? `Les autres dépassements (${others.join(', ')}) restent proches de la bande ±${f2(c.band, 3)} ; sur 36 retards, on en attend environ 2 par pur hasard. On ne les modélise pas d’emblée : c’est le diagnostic des résidus qui dira s’ils comptent.` : ''} La PACF décroît autour de ces retards, ce qui confirme une structure MA. Candidat : <strong>SARIMA(0,1,1)(0,1,1)₁₂</strong>, le modèle « airline ».`;
         },
-        py: `from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-w = z.diff(12).diff().dropna()
-plot_acf(w, lags=36); plot_pacf(w, lags=36, method="ldb")`,
+        r: `w <- diff(diff(z, lag = 12))
+ggtsdisplay(w, lag.max = 36)          # série, ACF et PACF
+acf(w, lag.max = 36, plot = FALSE)    # valeurs numériques`,
       },
       {
         title: 'Estimer, puis confronter à une recherche automatique',
@@ -167,9 +170,12 @@ plot_acf(w, lags=36); plot_pacf(w, lags=36, method="ldb")`,
               { numCols: [1, 2, 3], rowClass: (_, i) => (i === 0 ? 'best' : '') });
         },
         takeaway: (c) => `La recherche automatique retrouve ${TS.orderLabel(c.auto[0].order) === 'SARIMA(0,1,1)(0,1,1)12' ? 'exactement le modèle identifié à la main' : `${TS.orderLabel(c.auto[0].order)}, à ${f2(c.airline.aicc - c.auto[0].aicc, 2)} point d’AICc du modèle identifié à la main`}. Règle pratique : un écart d’AICc inférieur à 2 ne départage pas deux modèles ; on garde le plus simple.`,
-        py: `from statsmodels.tsa.statespace.sarimax import SARIMAX
-res = SARIMAX(z, order=(0, 1, 1), seasonal_order=(0, 1, 1, 12)).fit(disp=False)
-print(res.summary())`,
+        r: `fit <- Arima(y, order = c(0, 1, 1), seasonal = c(0, 1, 1), lambda = 0)
+summary(fit)                          # ma1 ≈ -0,40, sma1 ≈ -0,56 (vraisemblance exacte)
+
+# Recherche en grille exhaustive à d = D = 1, critère AICc
+auto.arima(y, d = 1, D = 1, lambda = 0, max.p = 2, max.q = 2, max.P = 1, max.Q = 1,
+           stepwise = FALSE, approximation = FALSE, ic = "aicc", trace = TRUE)`,
       },
       {
         title: 'Diagnostiquer les résidus',
@@ -183,11 +189,11 @@ print(res.summary())`,
         takeaway: (c) => {
           const ok = c.lb.every((b) => b.pvalue >= 0.05);
           return ok ? 'Aucune autocorrélation résiduelle détectée : le modèle a capté la dynamique. La normalité conditionne la justesse des intervalles.'
-            : `Ljung-Box détecte encore une structure (p = ${fp(Math.min(...c.lb.map((b) => b.pvalue)))}). Avec l’estimation CSS le résultat est à la limite ; en maximum de vraisemblance exact (statsmodels), le modèle airline passe généralement le test. Dans un vrai projet, on essaierait aussi un terme AR.`;
+            : `Ljung-Box détecte encore une structure (p = ${fp(Math.min(...c.lb.map((b) => b.pvalue)))}). Avec l’estimation CSS le résultat est à la limite ; en maximum de vraisemblance exact (<code>arima</code> de R), le modèle airline passe généralement le test. Dans un vrai projet, on essaierait aussi un terme AR.`;
         },
-        py: `from statsmodels.stats.diagnostic import acorr_ljungbox
-print(acorr_ljungbox(res.resid[13:], lags=[12, 24], model_df=2))
-res.plot_diagnostics()`,
+        r: `checkresiduals(fit, lag = 24)         # graphique + Ljung-Box avec ddl corrigés
+Box.test(residuals(fit), lag = 12, type = "Ljung-Box", fitdf = 2)
+tseries::jarque.bera.test(residuals(fit))`,
       },
       {
         title: 'Valider hors échantillon',
@@ -202,10 +208,14 @@ res.plot_diagnostics()`,
           const beat = others.every((r) => r.m.MASE < sn.m.MASE);
           return `Meilleur modèle au test : <strong>${esc(best.name)}</strong> (MASE ${f2(best.m.MASE, 3)}, MAPE ${f2(best.m.MAPE, 1)} %). ${beat ? `Les deux modèles structurés font mieux que le naïf saisonnier (MASE ${f2(sn.m.MASE, 3)}, MAPE ${f2(sn.m.MAPE, 1)} %).` : `Le naïf saisonnier (MASE ${f2(sn.m.MASE, 3)}) n’est pas battu par tous les modèles.`} Une MASE supérieure à 1 n’a rien d’anormal ici : son dénominateur est l’erreur du naïf saisonnier <em>à un pas</em> sur l’entraînement, alors qu’on prévoit jusqu’à 24 mois, sur une période où le trafic accélère. Un seul découpage ne suffit pas à départager deux bons modèles : la validation glissante du chapitre 7 le ferait.`;
         },
-        py: `train, test = y[:-24], y[-24:]
-fit = SARIMAX(np.log(train), order=(0,1,1), seasonal_order=(0,1,1,12)).fit(disp=False)
-pred = np.exp(fit.get_forecast(24).predicted_mean)
-print(np.mean(np.abs(test.values - pred.values)))`,
+        r: `train <- window(y, end = c(1958, 12))
+test  <- window(y, start = c(1959, 1))
+f_air <- forecast(Arima(train, order = c(0, 1, 1), seasonal = c(0, 1, 1), lambda = 0), h = 24)
+f_hw  <- hw(train, seasonal = "multiplicative", h = 24)
+f_sn  <- snaive(train, h = 24)
+rbind(airline = accuracy(f_air, test)["Test set", ],
+      holt_winters = accuracy(f_hw, test)["Test set", ],
+      naif_saisonnier = accuracy(f_sn, test)["Test set", ])`,
       },
       {
         title: 'Prévoir 1961–1962',
@@ -214,8 +224,9 @@ print(np.mean(np.abs(test.values - pred.values)))`,
           forecastFig(el, c.ds, [{ name: 'Prévision airline', ...c.fc }], { T: c.n, h: 24, title: 'Prévision à 24 mois et IC 95 %', from: 72 });
         },
         takeaway: (c) => `Prévision pour juillet 1961 : <strong>${f2(c.fc.mean[6], 0)}</strong> milliers de passagers, IC 95 % [${f2(c.fc.lo[6], 0)} ; ${f2(c.fc.hi[6], 0)}]. Pour juillet 1962 : ${f2(c.fc.mean[18], 0)} [${f2(c.fc.lo[18], 0)} ; ${f2(c.fc.hi[18], 0)}]. L’intervalle s’élargit avec l’horizon : c’est l’effet de la double différenciation.`,
-        py: `fc = res.get_forecast(24).summary_frame(alpha=0.05)
-fc_x = np.exp(fc[["mean", "mean_ci_lower", "mean_ci_upper"]])   # médiane et IC sur l'échelle d'origine`,
+        r: `fc <- forecast(fit, h = 24, level = 95)   # lambda = 0 : retransformé par exp (médiane)
+autoplot(fc)
+window(fc$mean, start = c(1961, 7), end = c(1961, 7))   # prévision de juillet 1961`,
       },
     ],
   };
@@ -256,8 +267,11 @@ fc_x = np.exp(fc[["mean", "mean_ci_lower", "mean_ci_upper"]])   # médiane et IC
           plot(el.querySelector('.f2'), { title: 'Amplitude annuelle', height: 210, xLabel: (i) => String(2015 + Math.round(i)), layers: [{ type: 'bar', x: c.cy.amp.map((_, i) => i), y: c.cy.amp, name: 'amplitude', color: '--s1' }] });
         },
         takeaway: () => 'Amplitude stable pendant que le niveau monte : saisonnalité additive. Pas de transformation logarithmique nécessaire.',
-        py: `amp = y.groupby(y.index.year).agg(lambda v: v.max() - v.min())
-print(np.corrcoef(amp, y.groupby(y.index.year).mean())[0, 1])`,
+        r: () => `library(forecast)
+# Les données exactes de l'atelier (mécanisme : 200 + 1,2 t + saison + bruit AR(1) de coefficient 0,5)
+${root.UI.rSeries(getDataset('sales'))}
+amp <- tapply(y, floor(time(y)), function(v) max(v) - min(v))
+cor(amp, tapply(y, floor(time(y)), mean))    # faible : additif`,
       },
       {
         title: 'Décomposer et comparer à la vérité',
@@ -269,9 +283,10 @@ print(np.corrcoef(amp, y.groupby(y.index.year).mean())[0, 1])`,
               { type: 'points', x: idx, y: c.trueFig, name: 'vrai profil', color: '--s2', r: 5 }, { type: 'hline', value: 0 }] });
         },
         takeaway: (c) => `Écart moyen entre profil estimé et vrai profil : <strong>${f2(TS.mean(c.dA.figure.map((v, j) => Math.abs(v - c.trueFig[j]))), 2)}</strong> unités, pour une amplitude de ${f2(Math.max(...c.trueFig) - Math.min(...c.trueFig), 0)}. La décomposition classique retrouve bien la saison quand l’hypothèse additive est la bonne. Force saisonnière F<sub>S</sub> = ${f2(c.dA.strengthSeason, 2)}.`,
-        py: `from statsmodels.tsa.seasonal import seasonal_decompose
-dec = seasonal_decompose(y, model="additive", period=12)
-print(dec.seasonal[:12])`,
+        r: `dec <- decompose(y, type = "additive")
+dec$figure                                   # profil saisonnier estimé
+vrai <- 25 * sin(2 * pi * (0:11) / 12) + 12 * cos(2 * pi * (0:11) / 6)
+mean(abs(dec$figure - vrai))                 # écart au vrai profil`,
       },
       {
         title: 'Holt-Winters additif : que retrouve-t-il ?',
@@ -285,9 +300,10 @@ print(dec.seasonal[:12])`,
             layers: [{ type: 'line', x: c.y.map((_, i) => i), y: c.hw.slope, name: 'bₜ', color: '--s5' }, { type: 'hline', value: 1.2, label: 'vraie pente 1,2' }] });
         },
         takeaway: () => 'La pente estimée oscille autour de la vraie valeur : le bruit AR(1) est en partie absorbé comme de petites variations de tendance. C’est le prix d’un modèle simple, qui reste très bon en prévision.',
-        py: `from statsmodels.tsa.holtwinters import ExponentialSmoothing
-hw = ExponentialSmoothing(y, trend="add", seasonal="add", seasonal_periods=12).fit()
-print(hw.params["smoothing_level"], hw.params["smoothing_trend"], hw.params["smoothing_seasonal"])`,
+        r: `hw_fit <- HoltWinters(y, seasonal = "additive")
+c(alpha = hw_fit$alpha, beta = hw_fit$beta, gamma = hw_fit$gamma)
+plot(hw_fit$fitted[, "trend"], main = "Pente estimée (vraie pente : 1,2)")
+abline(h = 1.2, lty = 2)`,
       },
       {
         title: 'Stationnariser et laisser la grille choisir un SARIMA',
@@ -301,9 +317,10 @@ print(hw.params["smoothing_level"], hw.params["smoothing_trend"], hw.params["smo
           const r1 = c.wA.r[0], r12 = c.wA.r[11], sig = c.wA.sig;
           return `ρ̂(1) = ${f2(r1, 2)} et ρ̂(12) = ${f2(r12, 2)} ; retards significatifs : ${sigList(sig)}. ${c.D && r12 < -c.wA.band ? 'Le pic négatif au retard 12 est la trace de la différence saisonnière appliquée à une saison fixe : elle appelle un MA saisonnier (Θ proche de −1). ' : ''}Le bruit AR(1) du vrai mécanisme, une fois différencié, se lit aux premiers retards. Les ordres retenus par la grille, ${TS.orderLabel(c.autoT[0].order)}, traduisent ces deux structures.`;
         },
-        py: `import pmdarima as pm       # pip install pmdarima
-m = pm.auto_arima(y[:-24], seasonal=True, m=12, information_criterion="aicc")
-print(m.summary())`,
+        r: `train <- window(y, end = c(2022, 12))
+fit <- auto.arima(train, ic = "aicc", stepwise = FALSE)
+summary(fit)
+ggtsdisplay(diff(diff(y, lag = 12)), lag.max = 36)`,
       },
       {
         title: 'Départager sur le test',
@@ -316,9 +333,11 @@ print(m.summary())`,
           const add = c.ev.list.find((r) => r.name === 'Holt-Winters additif'), mul = c.ev.list.find((r) => r.name === 'Holt-Winters multiplicatif');
           return `Holt-Winters additif : MASE ${f2(add.m.MASE, 3)} ; multiplicatif : MASE ${f2(mul.m.MASE, 3)}. Le diagnostic de l’étape 1 ${add.m.MASE <= mul.m.MASE ? 'est confirmé : le modèle additif prévoit mieux' : 'n’est pas confirmé sur ce découpage : l’écart est faible, les deux formes sont proches quand la saison pèse peu devant le niveau'}. Le meilleur modèle au test est ${esc(c.ev.list[0].name)}.`;
         },
-        py: `for trend, seas in [("add", "add"), ("add", "mul")]:
-    fit = ExponentialSmoothing(y[:-24], trend=trend, seasonal=seas, seasonal_periods=12).fit()
-    print(seas, np.mean(np.abs(y[-24:].values - fit.forecast(24).values)))`,
+        r: `test <- window(y, start = c(2023, 1))
+rbind(additif       = accuracy(hw(train, seasonal = "additive", h = 24), test)["Test set", ],
+      multiplicatif = accuracy(hw(train, seasonal = "multiplicative", h = 24), test)["Test set", ],
+      sarima        = accuracy(forecast(fit, h = 24), test)["Test set", ],
+      naif_saison   = accuracy(snaive(train, h = 24), test)["Test set", ])`,
       },
     ],
   };
@@ -361,8 +380,11 @@ print(m.summary())`,
             layers: [{ type: 'line', x: c.y.slice(from).map((_, i) => from + i), y: c.y.slice(from), name: 'MW', color: '--s1', width: 1.8 }] });
         },
         takeaway: () => 'Deux cycles se superposent : hebdomadaire (s = 7) et annuel (≈ 365 j). Un SARIMA ou un Holt-Winters classique n’en gère qu’un.',
-        py: `y[-56:].plot()                     # zoom sur 8 semaines
-y.groupby(y.index.dayofweek).mean().plot(kind="bar")`,
+        r: () => `library(forecast)
+# Série journalière avec saison hebdomadaire : frequency = 7 (données exactes de l'atelier)
+${root.UI.rSeries(getDataset('load'))}
+autoplot(window(y, start = time(y)[length(y) - 55]))   # 8 dernières semaines
+ggsubseriesplot(y)                                     # un panneau par jour de la semaine`,
       },
       {
         title: 'Quantifier l’effet jour de la semaine',
@@ -378,9 +400,8 @@ y.groupby(y.index.dayofweek).mean().plot(kind="bar")`,
           const lo = c.days.reduce((a, b) => (b[1] < a[1] ? b : a));
           return `Le jour le plus bas est le <strong>${lo[0]}</strong>, à ${f2((1 - lo[1]) * 100, 1)} % sous la tendance. F<sub>S</sub> = ${f2(c.dM.strengthSeason, 2)} : saison hebdomadaire forte.`;
         },
-        py: `from statsmodels.tsa.seasonal import seasonal_decompose
-dec = seasonal_decompose(y, model="multiplicative", period=7)
-print(dec.seasonal[:7])`,
+        r: `dec <- decompose(y, type = "multiplicative")
+round(dec$figure, 3)                     # coefficient par jour (dans l'ordre des données)`,
       },
       {
         title: 'Confirmer les cycles au périodogramme',
@@ -390,9 +411,9 @@ print(dec.seasonal[:7])`,
             layers: [{ type: 'line', x: c.per.map((q) => q.freq), y: c.per.map((q) => q.power), name: 'I(f)', color: '--s5', width: 1.3 }] });
         },
         takeaway: (c) => `Pics principaux : ${c.top.map((q) => `période ${f2(q.period, 1)} j`).join(' · ')}. La période hebdomadaire et ses harmoniques dominent ; les plus longues périodes traduisent le cycle annuel, qu’on ne peut pas estimer proprement avec un an de données seulement.`,
-        py: `from scipy.signal import periodogram
-f, P = periodogram(np.log(y).values - np.log(y).mean())
-print(1 / f[np.argsort(P)[-4:]])        # périodes dominantes`,
+        r: `p <- spec.pgram(log(y), taper = 0, detrend = TRUE, plot = FALSE)
+periode <- frequency(y) / p$freq          # p$freq est en cycles par semaine
+head(periode[order(p$spec, decreasing = TRUE)], 4)   # périodes dominantes, en jours`,
       },
       {
         title: 'Comparer les modèles sur 4 semaines',
@@ -409,9 +430,13 @@ print(1 / f[np.argsort(P)[-4:]])        # périodes dominantes`,
           }
           return `Meilleur : <strong>${esc(best.name)}</strong> (MASE ${f2(best.m.MASE, 3)}), devant le naïf saisonnier (répéter la dernière semaine, MASE ${f2(sn.m.MASE, 3)}). Sur données journalières, le naïf saisonnier reste une référence redoutable.`;
         },
-        py: `from statsmodels.tsa.statespace.sarimax import SARIMAX
-fit = SARIMAX(np.log(y[:-28]), order=(1, 1, 1), seasonal_order=(0, 1, 1, 7)).fit(disp=False)
-pred = np.exp(fit.get_forecast(28).predicted_mean)`,
+        r: `n <- length(y)
+train <- subset(y, end = n - 28); test <- subset(y, start = n - 27)
+fits <- list(sarima = forecast(auto.arima(train, lambda = 0), h = 28),
+             holt_winters = hw(train, seasonal = "multiplicative", h = 28),
+             hw_amorti = hw(train, seasonal = "multiplicative", damped = TRUE, h = 28),
+             naif_saison = snaive(train, h = 28))
+t(sapply(fits, function(f) accuracy(f, test)["Test set", c("MAE", "RMSE", "MAPE", "MASE")]))`,
       },
       {
         title: 'Aller plus loin : saisonnalités multiples',
@@ -425,9 +450,15 @@ pred = np.exp(fit.get_forecast(28).predicted_mean)`,
           acfFig(el, c.resid, L, 'ACF des résidus du SARIMA retenu (60 retards)', { s: 7 });
         },
         takeaway: () => 'Si des pics subsistent dans l’ACF des résidus, ils indiquent une structure non modélisée : c’est le signal pour ajouter des termes de Fourier ou des variables exogènes.',
-        py: `from statsmodels.tsa.seasonal import MSTL
-res = MSTL(y, periods=(7, 365)).fit()          # nécessite plus d'un an de données
-# Régression harmonique : SARIMAX(y, exog=fourier_terms, order=..., seasonal_order=(P,D,Q,7))`,
+        r: `# Plusieurs saisonnalités : objet msts puis MSTL ou TBATS
+y2 <- msts(as.numeric(y), seasonal.periods = c(7, 365.25))
+autoplot(mstl(y2))   # avec un seul an de données, mstl ignore la période 365 (il faut 2 cycles complets)
+fc_tbats <- forecast(tbats(y2), h = 28)
+
+# Régression harmonique : termes de Fourier pour le cycle annuel + ARIMA sur les erreurs
+K <- 3
+fit_f <- auto.arima(y2, xreg = fourier(y2, K = c(3, K)), seasonal = FALSE)
+fc_f <- forecast(fit_f, xreg = fourier(y2, K = c(3, K), h = 28))`,
       },
     ],
   };
@@ -475,8 +506,11 @@ res = MSTL(y, periods=(7, 365)).fit()          # nécessite plus d'un an de donn
           plot(el, { title: 'X_t (marche aléatoire, 250 pas)', height: 230, xLabel: (i) => String(Math.round(i) + 1), layers: [{ type: 'line', x: c.y.map((_, i) => i), y: c.y, name: 'X_t', color: '--s1', width: 1.5 }] });
         },
         takeaway: (c) => `ADF sur X<sub>t</sub> : p = ${fp(c.adf.pvalue)} (racine unitaire non rejetée). ADF sur ΔX<sub>t</sub> : p = ${fp(c.adfD.pvalue)}. La série est I(1).`,
-        py: `rw = np.cumsum(np.random.default_rng(3).normal(size=250)) + 100
-print(adfuller(rw)[1], adfuller(np.diff(rw))[1])`,
+        r: () => `library(tseries)
+# La marche aléatoire exacte de l'atelier (X_t = X_{t-1} + ε_t)
+${root.UI.rSeries(getDataset('rw'), 'rw')}
+adf.test(rw)$p.value            # élevée : racine unitaire non rejetée
+adf.test(diff(rw))$p.value      # faible : la différence est stationnaire`,
       },
       {
         title: 'L’empreinte d’une racine unitaire dans l’ACF',
@@ -487,7 +521,9 @@ print(adfuller(rw)[1], adfuller(np.diff(rw))[1])`,
           acfFig(el.querySelector('.f2'), c.dy, 30, 'ACF de ΔX_t');
         },
         takeaway: (c) => `Ljung-Box sur ΔX<sub>t</sub> : p = ${fp(c.lbD[0].pvalue)} (L = 10) et ${fp(c.lbD[1].pvalue)} (L = 20). Aucune autocorrélation : il n’y a rien à modéliser dans les accroissements.`,
-        py: `plot_acf(rw, lags=30); plot_acf(np.diff(rw), lags=30)`,
+        r: `par(mfrow = c(1, 2))
+acf(rw, lag.max = 30); acf(diff(rw), lag.max = 30)
+Box.test(diff(rw), lag = 10, type = "Ljung-Box")`,
       },
       {
         title: 'La régression fallacieuse',
@@ -504,10 +540,17 @@ print(adfuller(rw)[1], adfuller(np.diff(rw))[1])`,
             layers: [{ type: 'line', x: c.y.map((_, i) => i), y: c.y, name: 'X_t', color: '--s1', width: 1.5 }, { type: 'line', x: c.x.map((_, i) => i), y: c.x, name: 'Z_t (indépendante)', color: '--s2', width: 1.5 }] });
         },
         takeaway: (c) => `Sur ${c.M} paires de marches aléatoires indépendantes (n = 100), la pente est « significative à 5 % » dans <strong>${f2((100 * c.rej) / c.M, 0)} %</strong> des cas au lieu de 5 %. En différences, le lien disparaît (t = ${f2(c.dif.t, 2)}). Règle : ne jamais régresser des séries I(1) en niveau, sauf cointégration établie (test d’Engle-Granger ou de Johansen).`,
-        py: `import statsmodels.api as sm
-z = np.cumsum(np.random.default_rng(99).normal(size=250))
-print(sm.OLS(rw, sm.add_constant(z)).fit().summary())            # t énorme, R² élevé : fallacieux
-print(sm.OLS(np.diff(rw), sm.add_constant(np.diff(z))).fit().tvalues)`,
+        r: `set.seed(99)
+z <- ts(cumsum(rnorm(250)))
+summary(lm(rw ~ z))                      # t énorme, R² élevé : régression fallacieuse
+lmtest::dwtest(lm(rw ~ z))               # Durbin-Watson proche de 0
+summary(lm(diff(rw) ~ diff(z)))          # en différences : plus aucun lien
+
+# Monte-Carlo : fréquence des pentes « significatives » entre marches indépendantes
+mean(replicate(300, {
+  a <- cumsum(rnorm(100)); b <- cumsum(rnorm(100))
+  abs(summary(lm(a ~ b))$coefficients[2, "t value"]) > 1.96
+}))`,
       },
       {
         title: 'Prévoir : le naïf est optimal',
@@ -524,9 +567,15 @@ print(sm.OLS(np.diff(rw), sm.add_constant(np.diff(z))).fit().tvalues)`,
             : `La recherche automatique retient ${esc(lbl)} : sur 200 points, l’AICc peut préférer quelques coefficients qui ajustent du bruit. Au test, sa MASE (${f2(au.m.MASE, 3)}) est ${Math.abs(au.m.MASE - nv.m.MASE) < 0.05 * nv.m.MASE ? 'pratiquement celle du naïf' : au.m.MASE < nv.m.MASE ? 'un peu meilleure que celle du naïf, par chance sur ce découpage' : 'moins bonne que celle du naïf'} (${f2(nv.m.MASE, 3)}) : ces coefficients n’apportent aucune prévisibilité durable.`;
           return `La tendance linéaire, qui extrapole une « tendance » fortuite, obtient une MASE de ${f2(tr.m.MASE, 2)}. ${autoTxt} La leçon : un modèle sophistiqué ne crée pas de prévisibilité là où il n’y en a pas. Le naïf doit toujours figurer parmi les références.`;
         },
-        py: `from statsmodels.tsa.arima.model import ARIMA
-fit = ARIMA(rw[:-50], order=(0, 1, 0)).fit()      # marche aléatoire
-fc = fit.get_forecast(50).summary_frame()          # IC en ± 1,96 σ √h`,
+        r: `library(forecast)
+train <- subset(rw, end = 200); test <- subset(rw, start = 201)
+fc_naif <- naive(train, h = 50)            # = ARIMA(0,1,0) : IC en ± 1,96 σ √h
+fc_auto <- forecast(auto.arima(train, d = 1), h = 50)
+fc_trend <- forecast(tslm(train ~ trend), h = 50)
+rbind(naif = accuracy(fc_naif, test)["Test set", ],
+      auto = accuracy(fc_auto, test)["Test set", ],
+      tendance = accuracy(fc_trend, test)["Test set", ])
+autoplot(fc_naif)`,
       },
     ],
   };
@@ -536,7 +585,7 @@ fc = fit.get_forecast(50).summary_frame()          # IC en ± 1,96 σ √h`,
   // ================================================================ Rendu
   CH.push({
     id: 'cas', title: 'Études de cas', short: 'Études de cas',
-    desc: 'Quatre analyses complètes, commentées étape par étape, avec le code Python.',
+    desc: 'Quatre analyses complètes, commentées étape par étape, avec le code R.',
     render(el) {
       let current = store.get('case', 'air');
       if (!CASES.some((c) => c.id === current)) current = 'air';
@@ -544,7 +593,7 @@ fc = fit.get_forecast(50).summary_frame()          # IC en ± 1,96 σ √h`,
       <header class="ch-head">
         <div class="eyebrow">Chapitre 9 · Travaux réalisés</div>
         <h1>Études de cas : des analyses complètes, commentées</h1>
-        <p class="lede">Chaque cas suit une démarche réelle du début à la fin. Chaque étape montre le calcul, explique ce qu’on regarde, conclut, et donne le code Python pour la refaire. Les chiffres du texte sont recalculés en direct.</p>
+        <p class="lede">Chaque cas suit une démarche réelle du début à la fin. Chaque étape montre le calcul, explique ce qu’on regarde, conclut, et donne le code R pour la refaire. Les chiffres du texte sont recalculés en direct.</p>
       </header>
       <div class="case-tabs" role="tablist">${CASES.map((c) => `<button type="button" role="tab" data-case="${c.id}" aria-selected="${c.id === current}"><span class="ct-title">${c.title}</span><span class="ct-tag">${c.tag}</span></button>`).join('')}</div>
       <div id="case-body"></div>`;
@@ -575,7 +624,7 @@ fc = fit.get_forecast(50).summary_frame()          # IC en ± 1,96 σ √h`,
                 <div class="prose">${st.body(ctx)}</div>
                 <div class="step-fig" id="fig-${i}"></div>
                 <div class="callout good step-take" id="take-${i}"></div>
-                ${st.py ? `<details class="step-py"><summary>Code Python de l’étape</summary>${pyCode(st.py)}</details>` : ''}
+                ${st.r ? `<details class="step-py"><summary>Code R de l’étape</summary>${rCode(typeof st.r === 'function' ? st.r(ctx) : st.r)}</details>` : ''}
               </div>
             </li>`).join('')}</ol>`;
         cs.steps.forEach((st, i) => {

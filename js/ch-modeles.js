@@ -3,7 +3,7 @@
  */
 (function (root) {
   'use strict';
-  const { ctl, bind, val, num, int, block, formula, pyCode, quiz, table, stats, pill, f2, fp, $, $$, timeAxis,
+  const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, $, $$, timeAxis,
     lambdaOptions, parseLambda, getDataset, STATE, typeset, tick, esc, wireCopy } = root.UI;
   const { plot, complexPlane } = root.Charts;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
@@ -83,18 +83,21 @@
         <div class="grid-3"><div id="ar-c4"></div><div id="ar-c5"></div><div id="ar-c6"></div></div>
       </div>`)}
 
-      ${block('En Python', pyCode(
-`from statsmodels.tsa.arima_process import ArmaProcess
+      ${block('En R', rCode(
+`# Simulation : arima.sim suit la même convention de signes que l'atelier
+set.seed(5)
+x <- arima.sim(model = list(ar = c(1.2, -0.7), ma = 0.4), n = 300, n.start = 300)
+plot(x)
 
-# Attention au signe : statsmodels attend les polynômes complets
-# φ(B) = 1 - 1.2B + 0.7B²   et   θ(B) = 1 + 0.4B
-proc = ArmaProcess(ar=[1, -1.2, 0.7], ma=[1, 0.4])
-print(proc.isstationary, proc.isinvertible, proc.arroots)
+# Stationnarité et inversibilité : modules des racines de φ(z) et θ(z)
+Mod(polyroot(c(1, -1.2, 0.7)))   # φ(z) = 1 - 1,2 z + 0,7 z²  → tous > 1 : stationnaire
+Mod(polyroot(c(1, 0.4)))         # θ(z) = 1 + 0,4 z           → > 1 : inversible
 
-x = proc.generate_sample(nsample=300, scale=1.0, burnin=300)
-rho = proc.acf(lags=25)          # ACF théorique
-alpha = proc.pacf(lags=25)       # PACF théorique
-psi = proc.arma2ma(lags=20)      # poids ψ de la représentation MA(∞)`))}
+ARMAacf(ar = c(1.2, -0.7), ma = 0.4, lag.max = 25)                # ACF théorique
+ARMAacf(ar = c(1.2, -0.7), ma = 0.4, lag.max = 25, pacf = TRUE)   # PACF théorique
+ARMAtoMA(ar = c(1.2, -0.7), ma = 0.4, lag.max = 20)               # poids ψ (MA(∞))
+
+arima(x, order = c(2, 0, 1))     # réestimation sur la série simulée`))}
 
       ${block('Vérifier', quiz([
         { q: 'L’AR(2) φ₁ = 0,6, φ₂ = 0,5 est-il stationnaire ?', opts: ['Oui, car |φ₁| < 1 et |φ₂| < 1', 'Non, car φ₁ + φ₂ > 1', 'Oui, si σ² est petit'], a: 1, expl: 'Il faut φ₂ < 1 − φ₁, soit 0,5 < 0,4 : faux. Le polynôme 1 − 0,6z − 0,5z² a une racine de module inférieur à 1.' },
@@ -199,7 +202,7 @@ psi = proc.arma2ma(lags=20)      # poids ψ de la représentation MA(∞)`))}
       </div>
       <div class="prose"><p><strong>Cadre ETS (Error, Trend, Seasonal).</strong> Hyndman et al. (2002) réécrivent ces méthodes comme des modèles espace-état à une seule source d’erreur. Par exemple ETS(A,A,A) : \(y_t = \ell_{t-1} + b_{t-1} + s_{t-m} + \varepsilon_t\), \(\ell_t = \ell_{t-1} + b_{t-1} + \alpha\varepsilon_t\), \(b_t = b_{t-1} + \beta\varepsilon_t\), \(s_t = s_{t-m} + \gamma\varepsilon_t\) avec \(\beta = \alpha\beta^*\). Ce cadre donne une vraisemblance (donc l’AIC) et des variances de prévision exactes :</p></div>
       ${formula('', R`\[\operatorname{Var}(y_{t+h} - \hat y_{t+h|t}) = \sigma^2\Big[1 + \sum_{j=1}^{h-1} c_j^2\Big],\qquad c_j = \alpha + \beta\,(\phi + \dots + \phi^j) + \gamma\,\mathbb 1\{j \equiv 0 \bmod m\}\]
-        <p class="small muted">Exact pour les modèles à erreur et saison additives ; pour la saison multiplicative, l’atelier utilise cette formule mise à l’échelle, une approximation (statsmodels simule).</p>`)}`)}
+        <p class="small muted">Exact pour les modèles à erreur et saison additives ; pour la saison multiplicative, l’atelier utilise cette formule mise à l’échelle, une approximation (<code>forecast::ets</code> recourt alors à la simulation).</p>`)}`)}
 
       ${block('Pratique : ajuster et prévoir', R`<div class="panel" id="es-panel">
         <div class="controls">
@@ -221,20 +224,23 @@ psi = proc.arma2ma(lags=20)      # poids ψ de la représentation MA(∞)`))}
         <div id="es-c4"></div>
       </div>`)}
 
-      ${block('En Python', pyCode(
-`from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from statsmodels.tsa.exponential_smoothing.ets import ETSModel
+      ${block('En R', rCode(
+`library(forecast)
+y <- AirPassengers
 
-# Méthode de Holt-Winters (paramètres estimés en minimisant la SSE)
-hw = ExponentialSmoothing(y, trend="add", seasonal="mul", seasonal_periods=12,
-                          damped_trend=False, initialization_method="estimated").fit()
-print(hw.params_formatted)
-fc = hw.forecast(24)
+# Méthode de Holt-Winters classique (paramètres par minimisation de la SSE, comme l'atelier)
+hw_fit <- HoltWinters(y, seasonal = "multiplicative")
+c(alpha = hw_fit$alpha, beta = hw_fit$beta, gamma = hw_fit$gamma)   # beta = β* de l'atelier
+predict(hw_fit, n.ahead = 24, prediction.interval = TRUE)
 
-# Modèle ETS : vraisemblance, AIC et intervalles de prévision
-ets = ETSModel(y, error="add", trend="add", seasonal="mul", seasonal_periods=12).fit(disp=False)
-pred = ets.get_prediction(start=len(y), end=len(y) + 23)
-print(pred.summary_frame(alpha=0.05))      # mean, pi_lower, pi_upper`))}
+# Cadre ETS : vraisemblance, AIC et intervalles de prévision
+fit <- ets(y, model = "MAM")                    # erreur M, tendance A, saison M ("ZZZ" : choix auto)
+fit_amorti <- ets(y, model = "MAM", damped = TRUE)
+summary(fit)                                    # α, β, γ, φ, AIC, AICc, BIC
+fc <- forecast(fit, h = 24, level = 95)
+autoplot(fc)
+
+# Raccourcis : ses(y), holt(y, damped = TRUE), hw(y, seasonal = "multiplicative")`))}
 
       ${block('Vérifier', quiz([
         { q: 'Avec α = 0,2, quel poids reçoit l’observation d’il y a 3 périodes dans la prévision SES ?', opts: ['0,2', '0,2 × 0,8³ ≈ 0,102', '0,8³ ≈ 0,512'], a: 1, expl: 'Le poids de y_{t−j} est α(1−α)^j. Pour j = 3 : 0,2 × 0,512 = 0,1024.' },
@@ -317,25 +323,29 @@ print(pred.summary_frame(alpha=0.05))      # mean, pi_lower, pi_upper`))}
     return `\\[${lhs} = ${ma}${sma}\\varepsilon_t,\\qquad \\hat\\sigma^2 = ${texNum(fit.sigma2, 6)}\\]`;
   }
 
-  function sarimaPython(ds, o, lambda, h) {
-    const tr = lambda === null ? 'y' : Math.abs(lambda) < 1e-12 ? 'np.log(y)' : `boxcox(y, lmbda=${lambda})`;
-    const back = lambda === null ? 'fc' : Math.abs(lambda) < 1e-12 ? 'np.exp(fc)' : `inv_boxcox(fc, ${lambda})`;
-    return `from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.stats.diagnostic import acorr_ljungbox${lambda !== null && Math.abs(lambda) > 1e-12 ? '\nfrom scipy.stats import boxcox\nfrom scipy.special import inv_boxcox' : ''}
+  function sarimaR(ds, o, lambda, h) {
+    const lam = lambda === null ? 'NULL' : Math.abs(lambda) < 1e-12 ? '0' : String(lambda);
+    const lamNote = lambda === null ? '' : Math.abs(lambda) < 1e-12 ? '   # lambda = 0 : modèle sur log(y)' : '   # transformation de Box-Cox';
+    const seas = o.s > 1 && (o.P || o.D || o.Q) ? `,\n             seasonal = list(order = c(${o.P}, ${o.D}, ${o.Q}), period = ${o.s})` : '';
+    const nPar = o.p + o.q + o.P + o.Q;
+    return `library(forecast); library(tseries)
+${root.UI.rSeries(ds)}
 
-z = ${tr}
-mod = SARIMAX(z, order=(${o.p}, ${o.d}, ${o.q}), seasonal_order=(${o.P}, ${o.D}, ${o.Q}, ${o.s > 1 ? o.s : 0}),
-              trend="${o.d + o.D === 0 ? 'c' : 'n'}")
-res = mod.fit(disp=False)          # maximum de vraisemblance exact (filtre de Kalman)
-print(res.summary())               # coefficients, erreurs-types, AIC, Ljung-Box, Jarque-Bera
-res.plot_diagnostics(figsize=(11, 7))
+fit <- Arima(y, order = c(${o.p}, ${o.d}, ${o.q})${seas},
+             lambda = ${lam}, include.mean = ${o.d + o.D === 0 ? 'TRUE' : 'FALSE'},${lamNote}
+             method = "CSS")      # "CSS" reproduit l'atelier ; défaut "CSS-ML" : vraisemblance exacte
+summary(fit)                      # coefficients, erreurs-types, σ², AIC, AICc, BIC
 
-print(acorr_ljungbox(res.resid[${o.d + o.D * o.s}:], lags=[${o.s > 1 ? `${o.s}, ${2 * o.s}` : '10, 20'}], model_df=${o.p + o.q + o.P + o.Q}))
+# Diagnostic : résidus, ACF, histogramme et Ljung-Box (ddl corrigés de ${nPar})
+checkresiduals(fit, lag = ${o.s > 1 ? 2 * o.s : 20})
+Box.test(residuals(fit), lag = ${o.s > 1 ? o.s : 10}, type = "Ljung-Box", fitdf = ${nPar})
+jarque.bera.test(na.omit(residuals(fit)))
 
-pred = res.get_forecast(steps=${h})
-fc = pred.summary_frame(alpha=0.05)    # mean, mean_ci_lower, mean_ci_upper
-fc = ${back}                            # retour à l'échelle d'origine (médiane)
-# Recherche automatique d'ordres : pmdarima.auto_arima ou statsforecast.AutoARIMA`;
+fc <- forecast(fit, h = ${h}, level = 95)   # retransformé : médiane (biasadj = TRUE pour la moyenne)
+autoplot(fc)
+
+# Recherche automatique à d et D fixés, critère AICc
+auto.arima(y, d = ${o.d}, D = ${o.D}, lambda = ${lam}, ic = "aicc", stepwise = FALSE)`;
   }
 
   CH.push({
@@ -357,7 +367,7 @@ fc = ${back}                            # retour à l'échelle d'origine (média
         <div class="formula"><div class="ftitle">1 · Identification</div><p class="small">Box-Cox si la variance croît avec le niveau. Choisir d et D (tests du chapitre 2). Lire l’ACF et la PACF de \(W_t\) : retards non saisonniers → p, q ; retards s, 2s → P, Q. Proposer quelques candidats.</p></div>
         <div class="formula"><div class="ftitle">2 · Estimation</div><p class="small">L’atelier minimise la somme des carrés conditionnelle (CSS) :
           \[S(\beta) = \sum_{t>p^*} e_t^2,\quad e_t = \frac{\phi(B)\Phi(B^s)}{\theta(B)\Theta(B^s)}(W_t - \mu)\]
-          calculée récursivement avec \(e_t = 0\) avant le début. La vraisemblance est concentrée en σ² : \(\ell = -\tfrac{n}{2}\log(S/n) + \text{cste}\). statsmodels et R utilisent par défaut la vraisemblance exacte (filtre de Kalman) : les estimations diffèrent légèrement en petit échantillon.</p></div>
+          calculée récursivement avec \(e_t = 0\) avant le début. La vraisemblance est concentrée en σ² : \(\ell = -\tfrac{n}{2}\log(S/n) + \text{cste}\). La fonction <code>arima</code> de R utilise par défaut <code>method = "CSS-ML"</code> : CSS pour les valeurs initiales, puis vraisemblance exacte (filtre de Kalman). Les estimations diffèrent légèrement en petit échantillon ; <code>method = "CSS"</code> reproduit l’atelier.</p></div>
         <div class="formula"><div class="ftitle">Contraintes par reparamétrisation</div><p class="small">Chaque polynôme est paramétré par ses autocorrélations partielles \(r_k = \tanh(u_k)\in(-1,1)\), converties en coefficients par Durbin-Levinson (Jones, 1980). Tout \(u\in\mathbb R^p\) donne un polynôme stationnaire : l’optimiseur (Nelder-Mead) travaille sans contrainte. Les erreurs-types viennent du hessien numérique de \(-\ell\) dans l’espace des coefficients.</p></div>
         <div class="formula"><div class="ftitle">3 · Diagnostic et sélection</div><p class="small">Résidus : pas d’autocorrélation (Ljung-Box avec \(p+q+P+Q\) degrés retirés), variance stable, normalité (Jarque-Bera) pour que les intervalles soient justes. Entre candidats <em>de même d et D</em> :
           \[\begin{aligned}\text{AIC} &= -2\ell + 2k\\ \text{AICc} &= \text{AIC} + \tfrac{2k(k+1)}{n-k-1}\\ \text{BIC} &= -2\ell + k\log n\end{aligned}\]</p></div>
@@ -383,7 +393,7 @@ fc = ${back}                            # retour à l'échelle d'origine (média
         <div id="sa-out"></div>
       </div>`)}
 
-      ${block('Code Python équivalent', '<div id="sa-py"></div>')}
+      ${block('Code R équivalent', '<div id="sa-py"></div>')}
 
       ${block('Vérifier', quiz([
         { q: 'On compare ARIMA(1,1,1) (AIC = −480) et ARIMA(2,0,1) (AIC = −530). Le second est-il meilleur ?', opts: ['Oui, l’AIC est plus faible', 'On ne peut pas conclure : les vraisemblances portent sur des séries différentes (d différent)', 'Oui, si ses résidus passent Ljung-Box'], a: 1, expl: 'Différencier change les données modélisées : les AIC ne sont comparables qu’à d et D égaux. Pour choisir d, on utilise des tests ou une validation hors échantillon.' },
@@ -460,7 +470,7 @@ fc = ${back}                            # retour à l'échelle d'origine (média
         plot(out.querySelector('#sa-c5'), { title: 'Poids ψⱼ du modèle complet (différences incluses)', height: 210, xLabel: (v) => String(Math.round(v)),
           layers: [{ type: 'hline', value: 0, dash: false }, { type: 'stem', x: fc.psi.map((_, j) => j), y: fc.psi, name: 'ψⱼ', color: '--s5' }] });
         const py = el.querySelector('#sa-py');
-        py.innerHTML = pyCode(sarimaPython(ds, o, fit.lambda, h));
+        py.innerHTML = rCode(sarimaR(ds, o, fit.lambda, h));
         wireCopy(py);
       };
 
