@@ -34,6 +34,25 @@
   $('#theme-toggle').addEventListener('click', () => { theme = themes[(themes.indexOf(theme) + 1) % 3]; store.set('theme', theme); applyTheme(); });
   applyTheme();
 
+  // Menu mobile : tiroir latéral ouvert par le bouton ☰
+  const nav = $('#nav'), menuBtn = $('#menu-btn'), scrim = $('#scrim');
+  const mobile = root.matchMedia('(max-width: 900px)');
+  function setMenu(open) {
+    nav.classList.toggle('open', open);
+    scrim.hidden = !open;
+    document.body.classList.toggle('menu-open', open);
+    menuBtn.setAttribute('aria-expanded', String(open));
+    menuBtn.setAttribute('aria-label', open ? 'Fermer le menu des chapitres' : 'Ouvrir le menu des chapitres');
+    if (open) ($('#toc a[aria-current="page"]') || $('#toc a')).focus();
+  }
+  menuBtn.addEventListener('click', () => setMenu(!nav.classList.contains('open')));
+  scrim.addEventListener('click', () => setMenu(false));
+  $('#toc').addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && nav.classList.contains('open')) { setMenu(false); menuBtn.focus(); }
+  });
+  mobile.addEventListener('change', () => setMenu(false));
+
   function show(id) {
     const i = Math.max(0, CH.findIndex((c) => c.id === id));
     const ch = CH[i];
@@ -44,6 +63,7 @@
     main.innerHTML = '<article class="chapter" id="chapter"></article>';
     const art = $('#chapter');
     document.title = `${ch.short} · Atelier Séries Temporelles`;
+    $('#topbar-sub').textContent = `Chapitre ${i} · ${ch.short}`;
     try { ch.render(art); } catch (err) {
       art.innerHTML += `<div class="callout bad"><p>Erreur de rendu : ${root.UI.esc(err.message)}</p></div>`;
       console.error(err);

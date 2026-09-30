@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Atelier Séries Temporelles</title>
 <meta name="description" content="Des fondements aux modèles SARIMA et Holt-Winters : théorie, simulations interactives et pratique sur vos propres données.">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2a3b98">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
@@ -20,10 +24,22 @@
 <script src="vendor/tex-svg-full.js" defer></script>
 </head>
 <body>
+<header class="topbar">
+  <button class="menu-btn" id="menu-btn" type="button" aria-controls="nav" aria-expanded="false" aria-label="Ouvrir le menu des chapitres">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path class="l1" d="M5 7h14"/><path class="l2" d="M5 12h14"/><path class="l3" d="M5 17h14"/></svg>
+  </button>
+  <img class="app-icon" src="icons/icon.svg" alt="" width="44" height="44">
+  <div class="topbar-text">
+    <span class="topbar-title">Séries temporelles</span>
+    <span class="topbar-sub" id="topbar-sub"></span>
+  </div>
+</header>
+<div class="scrim" id="scrim" hidden></div>
 <div class="app">
-  <nav class="nav" aria-label="Chapitres">
+  <nav class="nav" id="nav" aria-label="Chapitres">
     <div class="brand">
-      <div class="brand-name"><small>Atelier</small>Séries temporelles</div>
+      <div class="brand-row"><img class="app-icon" src="icons/icon.svg" alt="" width="40" height="40">
+      <div class="brand-name"><small>Atelier</small>Séries temporelles</div></div>
       <svg id="brand-spark" viewBox="0 0 220 34" preserveAspectRatio="none" aria-hidden="true"><path d=""/></svg>
     </div>
     <ol id="toc"></ol>

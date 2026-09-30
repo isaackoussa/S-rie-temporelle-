@@ -254,23 +254,44 @@ tr.click:hover td { background: var(--panel-2); }
 .dropzone { border: 1.5px dashed var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
 .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
 
-/* ------------------------------------------------ Mobile */
+/* ------------------------------------------------ Icône d'application et en-tête mobile */
+.app-icon { display: block; flex: none; border-radius: 12px; box-shadow: 0 1px 3px rgb(20 30 80 / 0.25); }
+.brand-row { display: flex; align-items: center; gap: 10px; }
+.topbar { display: none; }
+.scrim { display: none; }
+.menu-btn {
+  width: 48px; height: 48px; flex: none; display: grid; place-items: center; padding: 0;
+  background: var(--panel); border: 1.5px solid var(--line); border-radius: 14px; color: var(--ink);
+}
+.menu-btn:hover { border-color: var(--ink-3); }
+.menu-btn svg { width: 24px; height: 24px; }
+.menu-btn path { stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; transition: transform 0.2s ease, opacity 0.2s ease; transform-origin: 12px 12px; }
+.menu-btn[aria-expanded="true"] .l1 { transform: translateY(5px) rotate(45deg); }
+.menu-btn[aria-expanded="true"] .l2 { opacity: 0; }
+.menu-btn[aria-expanded="true"] .l3 { transform: translateY(-5px) rotate(-45deg); }
+
+/* ------------------------------------------------ Mobile : tiroir de navigation */
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
-  .nav {
-    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; height: auto; flex-direction: row; align-items: center;
-    border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; gap: 10px; overflow: visible;
+  .topbar {
+    display: flex; align-items: center; gap: 12px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
+    padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line);
   }
-  .brand { padding: 0; }
-  .brand svg, .brand-name small, .nav-foot .credit { display: none; }
-  .brand-name { font-size: 16px; white-space: nowrap; }
-  .nav ol { display: flex; overflow-x: auto; gap: 4px; flex: 1; scrollbar-width: none; }
-  .nav ol::-webkit-scrollbar { display: none; }
-  .nav a { display: flex; white-space: nowrap; padding: 6px 10px; font-size: 13.5px; }
-  .nav-foot { margin: 0; padding: 0; }
+  .topbar-text { display: grid; min-width: 0; line-height: 1.2; }
+  .topbar-title { font-family: var(--f-display); font-weight: 600; font-size: 17px; }
+  .topbar-sub { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav {
+    position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(86vw, 320px);
+    padding-top: calc(20px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-102%); transition: transform 0.25s ease; box-shadow: 0 0 40px rgb(0 0 0 / 0.25); visibility: hidden;
+  }
+  .nav.open { transform: none; visibility: visible; }
+  .nav a { padding: 10px 8px; font-size: 15px; }
+  .scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgb(10 14 25 / 0.45); }
+  .scrim[hidden] { display: none; }
+  body.menu-open { overflow: hidden; }
   input[type="range"] { width: 140px; }
 }
 @media (max-width: 520px) {
-  .brand { display: none; }
   .panel { padding: 14px; }
 }
