@@ -140,3 +140,60 @@ test('jeux de données', () => {
     if (d.dates) assert.equal(d.dates.length, d.values.length);
   });
 });
+
+// ---------------------------------------------------------------- Compléments du cours M2 GRAF
+test('lissage double de Brown = Holt avec α(2−α) et α/(2−α)', () => {
+  const x = AIR.slice(0, 60);
+  const a = 0.4, b = TS.brownDouble(x, a);
+  const h = TS.etsRun(x, { trend: 'add', alpha: a * (2 - a), beta: a / (2 - a) });
+  b.fitted.forEach((v, i) => close(v, h.fitted[i], 1e-8, `t=${i}`));
+  close(b.forecast(3)[2], h.forecast(3)[2], 1e-8);
+});
+
+test('tendance linéaire : formules explicites du cours = moindres carrés', () => {
+  const lt = TS.linearTrendCourse(AIR);
+  const f = TS.ols(AIR.map((_, t) => [1, t + 1]), AIR);
+  close(lt.a, f.beta[0], 1e-8); close(lt.b, f.beta[1], 1e-10);
+});
+
+test('Box-Pierce ≤ Ljung-Box et moyenne mobile du cours', () => {
+  const g = TS.gaussianRng(4), x = Array.from({ length: 200 }, () => g());
+  assert.ok(TS.boxPierce(x, 20).Q < TS.ljungBox(x, [20])[0].Q);
+  assert.deepEqual(TS.movingAverageCourse([1, 2, 3, 4, 5], 1).map((v) => +v.toFixed(6)), [1.333333, 2, 3, 4, 4.666667]);
+});
+
+test('AR(3) par Yule-Walker', () => {
+  const x = TS.simulateArma({ phi: [1, -0.5, 1 / 3], n: 5000, seed: 2 });
+  const f = TS.arYuleWalker(x, 3);
+  close(f.coef[0], 1, 0.05); close(f.coef[1], -0.5, 0.05); close(f.coef[2], 1 / 3, 0.05);
+  assert.equal(TS.arYuleWalker(x).order, 3);
+});
+
+test('ARCH(2) simulé : estimation et propriétés', () => {
+  const { x } = TS.simulateGarch({ alpha0: 0.1, alpha: [0.5, 0.2], n: 3000, seed: 11 });
+  close(TS.acf(x, 1)[1], 0, 0.06, 'X non autocorrélé');
+  assert.ok(TS.acf(x.map((v) => v * v), 1)[1] > 0.2, 'X² autocorrélé');
+  assert.ok(TS.jarqueBera(x).kurtosis > 3);
+  const f = TS.garchFit(x, 2, 0);
+  close(f.alpha0, 0.1, 0.03); close(f.alpha[0], 0.5, 0.1); close(f.alpha[1], 0.2, 0.08);
+});
+
+test('GARCH(1,1) simulé', () => {
+  const { x } = TS.simulateGarch({ alpha0: 0.05, alpha: [0.1], beta: [0.85], n: 4000, seed: 5 });
+  const f = TS.garchFit(x, 1, 1);
+  close(f.alpha[0], 0.1, 0.04); close(f.beta[0], 0.85, 0.06);
+  const fv = f.forecastVar(200);
+  close(fv[199], f.uncondVar, 0.15 * f.uncondVar, 'convergence vers la variance inconditionnelle');
+});
+
+test('Holt-Winters identique à stats::HoltWinters de R', () => {
+  // R : HoltWinters(AirPassengers, alpha = .3, beta = .1, gamma = .1, seasonal = "mult")
+  const m = TS.hwR(AIR, { alpha: 0.3, beta: 0.1, gamma: 0.1, f: 12, seasonal: 'multiplicative' });
+  close(m.sse, 43636.569, 0.01); close(m.a1, 496.346, 0.001); close(m.a2, 3.72309, 1e-5);
+  const p = m.predict(13);
+  close(p.mean[0], 451.920, 0.001); close(p.lo[0], 438.717, 0.001); close(p.lo[12], 433.618, 0.001);
+  // R : HoltWinters(co2) → alpha 0.5126, beta 0.0095, gamma 0.4729, SSE 43.13
+  require('../js/cours/data-cours.js');
+  const c = TS.hwRFit(globalThis.CoursData.co2.values, { f: 12 });
+  close(c.alpha, 0.5126, 0.001); close(c.beta, 0.0095, 0.001); close(c.gamma, 0.4729, 0.001); close(c.sse, 43.13, 0.01);
+});

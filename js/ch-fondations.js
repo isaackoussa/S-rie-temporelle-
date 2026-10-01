@@ -34,7 +34,7 @@
 
       ${block('Ce qui change par rapport aux données i.i.d.', R`<div class="grid-3">
         <div class="formula"><div class="ftitle">Dépendance</div><p class="small">Les observations sont corrélées. L’écart-type de la moyenne n’est plus \(\sigma/\sqrt{n}\) : avec une autocorrélation positive, on a moins d’information qu’il n’y paraît.</p>
-          \[\operatorname{Var}(\bar X_n) = \frac{1}{n}\sum_{|h|<n}\Big(1-\frac{|h|}{n}\Big)\gamma(h)\]</div>
+          \[\operatorname{Var}(\bar X_n) = \frac{1}{n}\sum_{|h| \lt n}\Big(1-\frac{|h|}{n}\Big)\gamma(h)\]</div>
         <div class="formula"><div class="ftitle">Pas de mélange</div><p class="small">On ne peut pas mélanger les lignes. Une validation croisée classique (k-fold aléatoire) fait fuir le futur dans l’entraînement : on utilise un découpage chronologique (chapitre 7).</p></div>
         <div class="formula"><div class="ftitle">But : prévoir</div><p class="small">L’objectif est souvent la loi conditionnelle du futur sachant le passé, résumée par la prévision \(\hat X_{n+h|n} = \mathbb{E}[X_{n+h}\mid X_1,\dots,X_n]\) et un intervalle de prévision.</p></div>
       </div>`)}

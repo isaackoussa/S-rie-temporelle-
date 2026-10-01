@@ -49,6 +49,21 @@ installés récupèrent la nouvelle version.
 | 9 | Études de cas | 4 analyses complètes commentées étape par étape : AirPassengers (Box-Jenkins), ventes additives à vérité connue, charge électrique journalière, marche aléatoire et régression fallacieuse | chiffres recalculés en direct, code R par étape |
 | 10 | Exercices appliqués | identification ARMA, diagnostic de stationnarité, calculs à la main, défi de prévision sur données cachées | énoncés aléatoires, corrections détaillées, score |
 
+## Page « Cours M2 GRAF » (`cours-m2graf.html`)
+
+Le support de cours *Introduction aux séries temporelles* (Master 2 GRAF, IUA) en version interactive : même plan
+(chapitres 1, 3, 5, 7, 8, 10 et TP 1 à 5), mêmes notations (a_j, b_j, x̂_{n,h}, σ(h), r(h), Δ_T, SARIMA_{p,d,q,T}).
+
+- les 20 exercices du support corrigés (corrections dépliables) et les 5 TP rédigés comme des comptes-rendus ;
+- les séries de R utilisées par le cours (`USAccDeaths`, `sunspot.year`, `co2`, `EuStockMarkets`) intégrées valeur pour valeur ;
+- Holt-Winters calculé exactement comme `stats::HoltWinters` (initialisation, constantes, intervalles de prévision) ;
+- ARCH/GARCH estimés par maximum de vraisemblance, résultats conformes à `tseries::garch` ;
+- un encadré « Points d’attention » signale les coquilles du support (mise à jour de la pente du lissage double en α²,
+  pénalité du BIC en ν log n, algorithme de Durbin-Levinson, carré manquant dans la variance conditionnelle).
+
+Les fichiers distribués en TP (`varicelle`, `simulation.dat`, `serie1.dat`, `sanfran.dat`, `nyse.dat`…) ne sont pas fournis
+avec le support : les TP proposent un outil pour coller ses données ou une série de remplacement signalée comme telle.
+
 ## Moteur numérique (`js/stats.js`)
 
 - ACF/PACF (Durbin-Levinson), bandes de Bartlett, Ljung-Box, Jarque-Bera, périodogramme
@@ -79,6 +94,8 @@ js/data.js            jeux de données (AirPassengers + séries simulées)
 js/charts.js          graphiques SVG avec survol
 js/ui.js              contrôles, quiz, blocs de code R
 js/ch-*.js            chapitres (ch-cas.js : études de cas, ch-exercices.js : exercices)
-js/app.js             navigation
+js/app.js             navigation (partagée par les deux pages)
+js/cours/             chapitres et données de la page Cours M2 GRAF
+cours-m2graf.html     page Cours M2 GRAF
 vendor/               MathJax 3.2.2 (Apache 2.0), embarqué pour fonctionner hors ligne
 ```

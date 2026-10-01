@@ -884,7 +884,258 @@
     return errs.map((e) => (e.length ? mean(e) : NaN));
   }
 
+  // ------------------------------------------------------------------ Compléments du cours M2 GRAF
+  /**
+   * Lissage exponentiel double (Brown). Droite ajustée localement, prévision x̂_{n,h} = â1(n) + â2(n) h.
+   * Mise à jour à correction d'erreur, e_n = x_n − x̂_{n−1,1} :
+   *   â1(n) = â1(n−1) + â2(n−1) + α(2−α) e_n,   â2(n) = â2(n−1) + α² e_n,
+   * initialisation â1(0) = x1, â2(0) = x2 − x1. Équivaut à Holt avec α_H = α(2−α) et β_H = α/(2−α).
+   */
+  function brownDouble(x, alpha) {
+    let a1 = x[0], a2 = x[1] - x[0];
+    const fitted = [], A1 = [], A2 = [];
+    let sse = 0;
+    for (let t = 0; t < x.length; t++) {
+      const f = a1 + a2; fitted.push(f);
+      const e = x[t] - f; sse += e * e;
+      a1 = a1 + a2 + alpha * (2 - alpha) * e;
+      a2 = a2 + alpha * alpha * e;
+      A1.push(a1); A2.push(a2);
+    }
+    return { fitted, a1: A1, a2: A2, sse, forecast: (h) => Array.from({ length: h }, (_, k) => a1 + a2 * (k + 1)) };
+  }
+
+  // Lissage exponentiel simple du cours : x̂_{n,h} = α x_n + (1−α) x̂_{n−1,h}, initialisé à x̂_{1,h} = x1
+  function sesCourse(x, alpha) {
+    let l = x[0];
+    const fitted = [x[0]];
+    for (let t = 1; t < x.length; t++) { fitted.push(l); l = alpha * x[t] + (1 - alpha) * l; }
+    return { fitted, level: l, forecast: (h) => new Array(h).fill(l) };
+  }
+
+  // Moyenne mobile du cours : fenêtre 2q+1, bords répliqués (x_t = x_1 si t < 1, x_t = x_n si t > n)
+  function movingAverageCourse(x, q) {
+    const n = x.length;
+    return x.map((_, t) => { let s = 0; for (let k = -q; k <= q; k++) s += x[Math.min(n - 1, Math.max(0, t + k))]; return s / (2 * q + 1); });
+  }
+
+  // Tendance linéaire par les formules explicites du cours (t = 1..n)
+  function linearTrendCourse(x) {
+    const n = x.length, xb = mean(x);
+    let stx = 0; for (let t = 1; t <= n; t++) stx += t * x[t - 1];
+    const a = (6 / (n * (n - 1))) * (((2 * n + 1) / 3) * n * xb - stx);
+    const b = (12 / (n * (n * n - 1))) * (stx - ((n + 1) / 2) * n * xb);
+    return { a, b, trend: x.map((_, t) => a + b * (t + 1)) };
+  }
+
+  // Autocovariance « du cours » : normalisation 1/(n−h) (R et l'atelier utilisent 1/n)
+  function autocovCourse(x, h) {
+    const n = x.length, m = mean(x); let s = 0;
+    for (let t = 0; t < n - h; t++) s += (x[t] - m) * (x[t + h] - m);
+    return s / (n - h);
+  }
+
+  function boxPierce(x, H, dof = 0) {
+    const n = x.length, r = acf(x, H);
+    let q = 0; for (let k = 1; k <= H; k++) q += r[k] * r[k];
+    q *= n;
+    return { Q: q, df: H - dof, pvalue: chi2Sf(q, Math.max(1, H - dof)) };
+  }
+
+  // AR(p) par Yule-Walker ; ordre choisi par AIC si p = null (comme ar(aic = TRUE) de R)
+  function arYuleWalker(x, p = null, maxOrder = null) {
+    const n = x.length, m = mean(x), xc = x.map((v) => v - m);
+    if (p === null) {
+      const K = maxOrder ?? Math.min(n - 1, Math.floor(10 * Math.log10(n)));
+      const r = acf(xc, K), g0 = variance(xc);
+      let best = 0, bestAic = n * Math.log(g0), aics = [bestAic];
+      for (let k = 1; k <= K; k++) {
+        const dl = durbinLevinson(r, k);
+        const aic = n * Math.log(g0 * dl.innovationVar) + 2 * k;
+        aics.push(aic);
+        if (aic < bestAic) { bestAic = aic; best = k; }
+      }
+      const fit = arYuleWalker(x, best);
+      return { ...fit, aics };
+    }
+    if (p === 0) return { order: 0, coef: [], sigma2: variance(xc), mean: m };
+    const r = acf(xc, p), dl = durbinLevinson(r, p);
+    return { order: p, coef: dl.phi, sigma2: variance(xc) * dl.innovationVar * n / (n - p - 1), mean: m };
+  }
+  function arForecast(x, fit, h) {
+    const z = x.map((v) => v - fit.mean);
+    for (let k = 0; k < h; k++) { let v = 0; fit.coef.forEach((a, j) => { v += a * z[z.length - 1 - j]; }); z.push(v); }
+    return z.slice(x.length).map((v) => v + fit.mean);
+  }
+
+  /**
+   * GARCH(p, q) au sens du cours : X_t = ε_t, ε_t | passé ~ N(0, σ_t²),
+   * σ_t² = α0 + Σ_{i≤p} α_i X²_{t−i} + Σ_{j≤q} β_j σ²_{t−j}.   ARCH(p) = GARCH(p, 0).
+   */
+  function simulateGarch({ alpha0, alpha = [], beta = [], n = 1000, seed = 1, burn = 500 }) {
+    const g = gaussianRng(seed), N = n + burn;
+    const persist = alpha.reduce((a, b) => a + b, 0) + beta.reduce((a, b) => a + b, 0);
+    const v0 = persist < 1 ? alpha0 / (1 - persist) : alpha0;
+    const x = new Array(N).fill(0), s2 = new Array(N).fill(v0);
+    for (let t = 0; t < N; t++) {
+      let v = alpha0;
+      alpha.forEach((a, i) => { v += a * (t - i - 1 >= 0 ? x[t - i - 1] ** 2 : v0); });
+      beta.forEach((b, j) => { v += b * (t - j - 1 >= 0 ? s2[t - j - 1] : v0); });
+      s2[t] = v; x[t] = Math.sqrt(v) * g();
+    }
+    return { x: x.slice(burn), sigma2: s2.slice(burn) };
+  }
+
+  function garchFilter(x, alpha0, alpha, beta) {
+    const n = x.length, v0 = variance(x);
+    const s2 = new Array(n);
+    let ll = 0;
+    for (let t = 0; t < n; t++) {
+      let v = alpha0;
+      alpha.forEach((a, i) => { v += a * (t - i - 1 >= 0 ? x[t - i - 1] ** 2 : v0); });
+      beta.forEach((b, j) => { v += b * (t - j - 1 >= 0 ? s2[t - j - 1] : v0); });
+      s2[t] = v;
+      ll += -0.5 * (Math.log(2 * Math.PI) + Math.log(v) + (x[t] * x[t]) / v);
+    }
+    return { sigma2: s2, loglik: ll };
+  }
+
+  // Estimation par maximum de vraisemblance gaussien (Nelder-Mead, contraintes α0 > 0, α_i, β_j ≥ 0, Σ < 1)
+  function garchFit(x, p = 1, q = 1) {
+    const k = 1 + p + q;
+    const v0 = variance(x);
+    const decode = (u) => {
+      const w = u.slice(1).map(Math.exp), tot = 1 + w.reduce((a, b) => a + b, 0);
+      const shares = w.map((v) => v / tot);                 // Σ parts < 1 : stationnarité au second ordre
+      return { alpha0: Math.exp(u[0]), alpha: shares.slice(0, p), beta: shares.slice(p) };
+    };
+    const f = (u) => { const d = decode(u); const r = garchFilter(x, d.alpha0, d.alpha, d.beta); return isFinite(r.loglik) ? -r.loglik : 1e300; };
+    const init = [Math.log(v0 * 0.1), ...new Array(p).fill(Math.log(0.15 / Math.max(1, p) * 4)), ...new Array(q).fill(Math.log(0.7 / Math.max(1, q) * 4))];
+    let opt = nelderMead(f, init, { maxIter: 4000 });
+    opt = nelderMead(f, opt.x, { maxIter: 4000, step: 0.1 });
+    const d = decode(opt.x);
+    const theta = [d.alpha0, ...d.alpha, ...d.beta];
+    const nll = (th) => { if (th.some((v) => v < 0)) return 1e300; const r = garchFilter(x, th[0], th.slice(1, 1 + p), th.slice(1 + p)); return -r.loglik; };
+    let se = theta.map(() => NaN);
+    const inv = invert(numericHessian(nll, theta));
+    if (inv) se = inv.map((row, i) => (row[i] > 0 ? Math.sqrt(row[i]) : NaN));
+    const filt = garchFilter(x, d.alpha0, d.alpha, d.beta);
+    const names = ['a0', ...d.alpha.map((_, i) => `a${i + 1}`), ...d.beta.map((_, j) => `b${j + 1}`)];
+    const persist = [...d.alpha, ...d.beta].reduce((a, b) => a + b, 0);
+    const forecastVar = (h) => {
+      // E[σ²_{n+h}] : on remplace X² futurs par leur espérance σ² futurs
+      const s = filt.sigma2.slice(), xx = x.map((v) => v * v), n = x.length, out = [];
+      for (let t = n; t < n + h; t++) {
+        let v = d.alpha0;
+        d.alpha.forEach((a, i) => { v += a * xx[t - i - 1]; });
+        d.beta.forEach((b, j) => { v += b * s[t - j - 1]; });
+        s.push(v); xx.push(v); out.push(v);
+      }
+      return out;
+    };
+    return {
+      p, q, alpha0: d.alpha0, alpha: d.alpha, beta: d.beta, loglik: filt.loglik, aic: -2 * filt.loglik + 2 * k,
+      sigma2: filt.sigma2, persistence: persist, uncondVar: persist < 1 ? d.alpha0 / (1 - persist) : Infinity,
+      coefs: names.map((nm, i) => ({ name: nm, value: theta[i], se: se[i], z: theta[i] / se[i], pvalue: 2 * (1 - normCdf(Math.abs(theta[i] / se[i]))) })),
+      stdResid: x.map((v, t) => v / Math.sqrt(filt.sigma2[t])), forecastVar,
+    };
+  }
+
+  /**
+   * Holt-Winters exactement comme stats::HoltWinters de R (formules du cours §3.3) :
+   *   â1(n) = α(x_n − ŝ_{n−T}) + (1−α)(â1(n−1) + â2(n−1))      (÷ au lieu de − en multiplicatif)
+   *   â2(n) = β(â1(n) − â1(n−1)) + (1−β) â2(n−1)
+   *   ŝ_n   = γ(x_n − â1(n)) + (1−γ) ŝ_{n−T}                       (÷ en multiplicatif)
+   * Initialisation de R : LES → â1 = x1 (départ t = 2) ; tendance → â1 = x2, â2 = x2 − x1 (départ t = 3) ;
+   * saison → décomposition par moyenne mobile des 2 premières périodes, droite sur la tendance (départ t = T+1).
+   * beta / gamma = false désactivent la composante, comme dans R.
+   */
+  function hwR(x, { alpha, beta = false, gamma = false, seasonal = 'additive', f = 1 }) {
+    const doT = beta !== false, doS = gamma !== false, mul = seasonal === 'multiplicative';
+    const b = doT ? beta : 0, g = doS ? gamma : 0;
+    let l, tr = 0, S = [], start;
+    if (doS) {
+      const dcp = decompose(x.slice(0, 2 * f), f, mul ? 'multiplicative' : 'additive');
+      const tt = dcp.trend.map((v, i) => [i, v]).filter((p) => p[1] !== null);
+      const fit = ols(tt.map((_, k) => [1, k + 1]), tt.map((p) => p[1]));
+      l = fit.beta[0]; tr = doT ? fit.beta[1] : 0; S = dcp.figure.slice(); start = f;
+    } else if (doT) { l = x[1]; tr = x[1] - x[0]; start = 2; }
+    else { l = x[0]; start = 1; }
+    const level = [], trend = [], season = [], fitted = new Array(x.length).fill(null);
+    let sse = 0;
+    for (let i = start; i < x.length; i++) {
+      const sPrev = doS ? S[S.length - f] : (mul ? 1 : 0);
+      let xhat = l + (doT ? tr : 0);
+      xhat = doS ? (mul ? xhat * sPrev : xhat + sPrev) : xhat;
+      fitted[i] = xhat;
+      const e = x[i] - xhat; sse += e * e;
+      const lNew = alpha * (doS ? (mul ? x[i] / sPrev : x[i] - sPrev) : x[i]) + (1 - alpha) * (l + (doT ? tr : 0));
+      if (doT) tr = b * (lNew - l) + (1 - b) * tr;
+      l = lNew;
+      if (doS) S.push(g * (mul ? x[i] / l : x[i] - l) + (1 - g) * sPrev);
+      level.push(l); trend.push(tr); season.push(doS ? S[S.length - 1] : null);
+    }
+    const resid = fitted.map((v, i) => (v === null ? null : x[i] - v)).filter((v) => v !== null);
+    const lastS = doS ? S.slice(-f) : null;
+    const predict = (h, level95 = true) => {
+      const mean = [], lo = [], hi = [];
+      const v = variance(resid, 1), z = 1.959964;
+      let acc = 0;
+      const psi = (j) => alpha * (1 + j * b) + (doS && j % f === 0 ? g * (1 - alpha) : 0);
+      // vecteur de coefficients de R (indices à partir de 1) : a, [b], s1..sT
+      const coef = [null, l, ...(doT ? [tr] : []), ...(doS ? lastS : [])];
+      for (let k = 1; k <= h; k++) {
+        let m = l + (doT ? k * tr : 0);
+        if (doS) m = mul ? m * lastS[(k - 1) % f] : m + lastS[(k - 1) % f];
+        mean.push(m);
+        let fac;
+        if (doS && mul) {
+          // formule de predict.HoltWinters pour le multiplicatif, reproduite telle quelle
+          const rel = 1 + ((k - 1) % f);
+          fac = 0;
+          for (let j = 0; j <= k - 1; j++) { const q = psi(j) * coef[2 + rel] / coef[2 + (((rel - j) % f) + f) % f]; fac += q * q; }
+        } else {
+          if (k > 1) acc += psi(k - 1) ** 2;
+          fac = 1 + acc;
+        }
+        const sd = Math.sqrt(v * fac);
+        if (level95) { lo.push(m - z * sd); hi.push(m + z * sd); }
+      }
+      return { mean, lo, hi };
+    };
+    return { alpha, beta: doT ? b : false, gamma: doS ? g : false, seasonal, f, sse, fitted, level, trend, season, resid, start, predict, a1: l, a2: tr, s: lastS };
+  }
+
+  // Estimation des constantes comme R : minimisation de la SSE à un pas (point de départ 0,3 / 0,1 / 0,1)
+  function hwRFit(x, { beta = true, gamma = true, seasonal = 'additive', f = 1, alpha = null } = {}) {
+    const doT = beta !== false, doS = gamma !== false && f > 1;
+    const free = [];
+    if (alpha === null) free.push('alpha');
+    if (doT && beta === true) free.push('beta');
+    if (doS && gamma === true) free.push('gamma');
+    const fixed = { alpha, beta: doT ? (beta === true ? null : beta) : false, gamma: doS ? (gamma === true ? null : gamma) : false };
+    const build = (u) => {
+      const p = { ...fixed };
+      free.forEach((k, i) => { p[k] = 1 / (1 + Math.exp(-u[i])); });
+      return p;
+    };
+    const f0 = (u) => { const p = build(u); const r = hwR(x, { ...p, seasonal, f }); return isFinite(r.sse) ? r.sse : 1e300; };
+    // plusieurs départs (dont celui de R : 0,3 / 0,1 / 0,1) : la SSE est souvent plate près des bornes
+    const starts = [[0.3, 0.1, 0.1], [0.7, 0.02, 0.3], [0.95, 0.005, 0.6], [0.1, 0.05, 0.05]];
+    let best = null;
+    for (const st of starts) {
+      const init = free.map((k) => logit(k === 'alpha' ? st[0] : k === 'beta' ? st[1] : st[2]));
+      let opt = nelderMead(f0, init, { maxIter: 3000 });
+      opt = nelderMead(f0, opt.x, { maxIter: 3000, step: 0.2 });
+      if (!best || opt.fx < best.fx) best = opt;
+    }
+    return hwR(x, { ...build(best.x), seasonal, f });
+  }
+
   const TS = {
+    hwR, hwRFit,
+    brownDouble, sesCourse, movingAverageCourse, linearTrendCourse, autocovCourse, boxPierce, arYuleWalker, arForecast,
+    simulateGarch, garchFilter, garchFit,
     mulberry32, gaussianRng, sum, mean, variance, std, quantile, rolling, diff, boxcox, invBoxcox, boxcoxLambda,
     invert, ols, erf, normCdf, normPdf, normInv, lgamma, gammaP, chi2Cdf, chi2Sf,
     autocov, acf, pacf, durbinLevinson, bartlettBands, ljungBox, jarqueBera, periodogram,

@@ -6,6 +6,11 @@
   const { $, $$, store, typeset, wireCopy, wireQuiz } = root.UI;
   const CH = root.CHAPTERS;
   const main = $('#content');
+  // Chaque page (atelier, cours M2 GRAF) a sa propre mémoire de chapitre et son propre titre
+  const APP = document.body.dataset.app || 'atelier';
+  const APP_TITLE = document.body.dataset.title || 'Atelier Séries Temporelles';
+  const KEY = APP === 'atelier' ? 'chapter' : `${APP}:chapter`;
+  const ico = (c) => root.UI.icon(c.icon || c.id);
 
   // MathJax se charge après ce script (defer) : on compose la page courante dès qu'il est prêt.
   root.MathJax.startup.ready = () => {
@@ -14,7 +19,7 @@
   };
 
   // Sommaire
-  $('#toc').innerHTML = CH.map((c, i) => `<li><a href="#${c.id}" data-id="${c.id}">${root.UI.icon(c.id)}<span>${c.short}</span><span class="t">t = ${i}</span></a></li>`).join('');
+  $('#toc').innerHTML = CH.map((c, i) => `<li><a href="#${c.id}" data-id="${c.id}">${ico(c)}<span>${c.short}</span><span class="t">t = ${i}</span></a></li>`).join('');
 
   // Petite courbe AirPassengers dans l'en-tête
   (function spark() {
@@ -87,24 +92,24 @@
     cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     main.innerHTML = '<article class="chapter" id="chapter"></article>';
     const art = $('#chapter');
-    document.title = `${ch.short} · Atelier Séries Temporelles`;
+    document.title = `${ch.short} · ${APP_TITLE}`;
     $('#topbar-sub').textContent = `Chapitre ${i} · ${ch.short}`;
     try { ch.render(art); } catch (err) {
       art.innerHTML += `<div class="callout bad"><p>Erreur de rendu : ${root.UI.esc(err.message)}</p></div>`;
       console.error(err);
     }
     const eb = art.querySelector('.ch-head .eyebrow');
-    if (eb) eb.insertAdjacentHTML('afterbegin', root.UI.icon(ch.id));
+    if (eb) eb.insertAdjacentHTML('afterbegin', ico(ch));
     const prev = CH[i - 1], next = CH[i + 1];
     art.insertAdjacentHTML('beforeend', `<nav class="pager">${prev ? `<a href="#${prev.id}"><span>← chapitre ${i - 1}</span>${prev.short}</a>` : ''}${next ? `<a class="next" href="#${next.id}"><span>chapitre ${i + 1} →</span>${next.short}</a>` : ''}</nav>`);
     wireCopy(art);
     wireQuiz(art);
     typeset(art);
-    store.set('chapter', ch.id);
+    store.set(KEY, ch.id);
     root.scrollTo(0, 0);
   }
 
-  const route = () => show(location.hash.slice(1) || store.get('chapter', 'intro'));
+  const route = () => show(location.hash.slice(1) || store.get(KEY, CH[0].id));
   root.addEventListener('hashchange', route);
   route();
 })(window);

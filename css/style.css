@@ -131,6 +131,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; }
 .grid-2 > *, .grid-3 > * { min-width: 0; }
+.stack { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 var(--radius) var(--radius) 0; max-width: 74ch; }
 .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
 .callout.bad { border-color: var(--bad); background: var(--bad-soft); }
@@ -320,6 +321,36 @@ tr.click:hover td { background: var(--panel-2); }
 .ex-answers button:disabled { cursor: default; opacity: 1; }
 .ex-q { font-size: 16.5px; margin: 0; max-width: 72ch; }
 #exC h3 { margin: 0; }
+
+/* ------------------------------------------------ Cours M2 GRAF : exercices et questions de TP */
+.page-link {
+  display: block; font-size: 13.5px; font-weight: 500; text-decoration: none; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); color: var(--accent);
+}
+.page-link:hover { border-color: var(--accent); }
+.exo { border: 1px solid var(--line); border-left: 3px solid var(--s5); border-radius: var(--radius); background: var(--panel); padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.exo-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.exo-num { font-family: var(--f-display); font-weight: 600; font-size: 16px; color: var(--s5); }
+.exo-src { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.exo-enonce { font-style: italic; color: var(--ink); max-width: 75ch; }
+.exo-sol summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--accent); padding: 2px 0; }
+.exo-sol[open] summary { margin-bottom: 8px; }
+.exo-sol .prose { max-width: 75ch; }
+.tpq-list { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.tpq { border-bottom: 1px solid var(--line); padding-bottom: 10px; display: grid; gap: 6px; min-width: 0; }
+.tpq-q { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; font-weight: 500; }
+.tpq-num {
+  font-family: var(--f-mono); font-size: 12px; background: var(--accent-soft); color: var(--accent); border-radius: 5px;
+  padding: 2px 7px; align-self: start; white-space: nowrap;
+}
+.tpq-r { color: var(--ink-2); padding-left: 2px; max-width: 80ch; }
+.exo, .tpq, .exo-sol { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+/* Une formule en ligne trop longue défile dans son propre cadre au lieu d'élargir la page */
+.tpq-r mjx-container:not([display="true"]), .exo mjx-container:not([display="true"]), .prose mjx-container:not([display="true"]) {
+  display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; vertical-align: middle;
+}
+.lagplots { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.lagplots > * { min-width: 0; }
 
 /* ------------------------------------------------ Icône d'application et en-tête mobile */
 .app-icon { display: block; flex: none; border-radius: 12px; box-shadow: 0 1px 3px rgb(20 30 80 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.1); }

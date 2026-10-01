@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Atelier Séries Temporelles</title>
-<meta name="description" content="Des fondements aux modèles SARIMA et Holt-Winters : théorie, simulations interactives et pratique sur vos propres données.">
+<title>Cours M2 GRAF</title>
+<meta name="description" content="Le cours de séries temporelles du Master 2 GRAF (IUA) en version interactive : chapitres, exercices et TP corrigés, code R.">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -27,14 +27,14 @@
 </script>
 <script src="vendor/tex-svg-full.js" defer></script>
 </head>
-<body>
+<body data-app="m2graf" data-title="Cours M2 GRAF">
 <header class="topbar">
   <button class="menu-btn" id="menu-btn" type="button" aria-controls="nav" aria-expanded="false" aria-label="Ouvrir le menu des chapitres">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path class="l1" d="M5 7h14"/><path class="l2" d="M5 12h14"/><path class="l3" d="M5 17h14"/></svg>
   </button>
   <img class="app-icon" src="icons/icon.svg" alt="" width="44" height="44">
   <div class="topbar-text">
-    <span class="topbar-title">Séries temporelles</span>
+    <span class="topbar-title">Cours M2 GRAF</span>
     <span class="topbar-sub" id="topbar-sub"></span>
   </div>
 </header>
@@ -43,13 +43,13 @@
   <nav class="nav" id="nav" aria-label="Chapitres">
     <div class="brand">
       <div class="brand-row"><img class="app-icon" src="icons/icon.svg" alt="" width="40" height="40">
-      <div class="brand-name"><small>Atelier</small>Séries temporelles</div></div>
+      <div class="brand-name"><small>Cours M2 GRAF · IUA</small>Séries temporelles</div></div>
       <svg id="brand-spark" viewBox="0 0 220 34" preserveAspectRatio="none" aria-hidden="true"><path d=""/></svg>
     </div>
     <ol id="toc"></ol>
     <div class="nav-foot">
       <button class="install-btn" id="install-btn" type="button" hidden><img src="icons/icon.svg" alt="" width="22" height="22"> Installer l’application</button>
-      <a class="page-link" href="cours-m2graf.html">Cours M2 GRAF (IUA) →</a>
+      <a class="page-link" href="./">← Atelier Séries Temporelles</a>
       <button class="ghost theme-toggle" id="theme-toggle" type="button">Thème : auto</button>
       <span class="credit">Calculs exécutés dans votre navigateur. Aucune donnée n’est envoyée.</span>
     </div>
@@ -60,11 +60,13 @@
 <script src="js/data.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/ui.js"></script>
-<script src="js/ch-fondations.js"></script>
-<script src="js/ch-modeles.js"></script>
-<script src="js/ch-pratique.js"></script>
-<script src="js/ch-cas.js"></script>
-<script src="js/ch-exercices.js"></script>
+<script src="js/cours/data-cours.js"></script>
+<script src="js/cours/commun.js"></script>
+<script src="js/cours/c-intro.js"></script>
+<script src="js/cours/c-lissage.js"></script>
+<script src="js/cours/c-tendance.js"></script>
+<script src="js/cours/c-arma.js"></script>
+<script src="js/cours/c-garch.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
