@@ -61,8 +61,21 @@ Le support de cours *Introduction aux séries temporelles* (Master 2 GRAF, IUA) 
 - un encadré « Points d’attention » signale les coquilles du support (mise à jour de la pente du lissage double en α²,
   pénalité du BIC en ν log n, algorithme de Durbin-Levinson, carré manquant dans la variance conditionnelle).
 
-Les fichiers distribués en TP (`varicelle`, `simulation.dat`, `serie1.dat`, `sanfran.dat`, `nyse.dat`…) ne sont pas fournis
-avec le support : les TP proposent un outil pour coller ses données ou une série de remplacement signalée comme telle.
+Les fichiers des TP sont dans `donnees/` (voir ci-dessous) ; `sanfran.dat` et `UKinterestrates.dat`, introuvables,
+sont remplacés par de vraies séries de même nature, signalées comme substituts.
+
+## Données (`donnees/`)
+
+Toutes les séries des exemples et des TP, en `.dat` (une valeur par ligne, pour `scan()`) et en `.csv` (`date,valeur`) :
+
+- **séries réelles** : varicelle à New York 1931–1972, précipitations mensuelles 1932–1966, taux obligataires à 2 ans
+  1969–1994, rendements journaliers du NYSE 1984–1991 (sources : Time Series Data Library de R. Hyndman, paquet `astsa`) ;
+- **copies des séries de R** : USAccDeaths, AirPassengers, co2, sunspot.year, EuStockMarkets ;
+- **séries simulées des TP** : `simulation`, `serie1`, `serie2` (solutions dans `donnees/SOLUTIONS_SIMULATIONS.md`).
+
+Détail des sources et des substituts dans [`donnees/README.md`](donnees/README.md). Tout se régénère avec
+`Rscript donnees/generer_donnees.R`, qui écrit aussi `js/cours/data-tp.js` pour l’application. Les deux pages utilisent
+ces séries : la page du cours dans ses TP, l’Atelier dans tous ses chapitres et dans le laboratoire.
 
 ## Moteur numérique (`js/stats.js`)
 
@@ -96,6 +109,7 @@ js/ui.js              contrôles, quiz, blocs de code R
 js/ch-*.js            chapitres (ch-cas.js : études de cas, ch-exercices.js : exercices)
 js/app.js             navigation (partagée par les deux pages)
 js/cours/             chapitres et données de la page Cours M2 GRAF
+donnees/              fichiers .dat et .csv des exemples et des TP, script R de génération
 cours-m2graf.html     page Cours M2 GRAF
 vendor/               MathJax 3.2.2 (Apache 2.0), embarqué pour fonctionner hors ligne
 ```

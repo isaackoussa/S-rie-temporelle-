@@ -308,7 +308,8 @@ write.csv(as.data.frame(fc), "prevision.csv")`;
         <div class="dropzone" id="lab-drop">
           <div class="controls">
             <label class="ctl" for="lab-file"><span>Fichier CSV</span><input type="file" id="lab-file" accept=".csv,.txt,.tsv,text/csv" data-nobind></label>
-            <button type="button" class="ghost" id="lab-example">Charger l’exemple (AirPassengers)</button>
+            <label class="ctl" for="lab-ex"><span>… ou une série d’exemple</span><select id="lab-ex" data-nobind>${STATE.datasets.filter((d) => d.id !== 'user').map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select></label>
+            <button type="button" class="ghost" id="lab-example">Analyser cet exemple</button>
           </div>
           <label class="ctl" for="lab-text"><span>… ou collez les données (séparateur , ; ou tabulation, avec ou sans en-tête)</span>
             <textarea id="lab-text" data-nobind spellcheck="false"></textarea></label>
@@ -345,7 +346,7 @@ write.csv(as.data.frame(fc), "prevision.csv")`;
         el.querySelector('#lab-msg').innerHTML = `<p class="small">${parsed.rows.length} lignes, ${parsed.names.length} colonnes. Vérifiez les colonnes puis lancez l’analyse. Laissez s et l’horizon vides pour les valeurs automatiques.</p>`;
       };
 
-      el.querySelector('#lab-example').addEventListener('click', () => { loadText(datasetCsv(getDataset('air')), 'AirPassengers (exemple)'); analyse(); });
+      el.querySelector('#lab-example').addEventListener('click', () => { const d = getDataset(el.querySelector('#lab-ex').value); loadText(datasetCsv(d), `${d.short || d.name} (exemple)`); analyse(); });
       el.querySelector('#lab-file').addEventListener('change', (e) => {
         const f = e.target.files[0]; if (!f) return;
         const r = new FileReader(); r.onload = () => loadText(String(r.result), f.name.replace(/\.[^.]+$/, '')); r.readAsText(f);

@@ -18,6 +18,24 @@
     cac: { id: 'cac', name: 'CAC40 : clôtures journalières (1991–1998)', short: 'CAC40', r: 'EuStockMarkets[, "CAC"]',
       values: D.EuStockMarkets.CAC, dates: null, freq: null, period: 1, t0: D.EuStockMarkets.start, f: D.EuStockMarkets.frequency },
   };
+  // Fichiers des TP (dossier donnees/ du dépôt), voir donnees/README.md pour les sources
+  const P = root.CoursTP;
+  const nyseT0 = 1984 + 32 / 366;   // 2 février 1984 ; 2000 séances jusqu'au 31 décembre 1991
+  Object.assign(SERIES, {
+    varicelle: { id: 'varicelle', name: 'Varicelle : cas mensuels à New York (1931–1972)', short: 'varicelle', file: 'varicelle',
+      rRead: 'varicelle <- ts(scan("donnees/varicelle.dat"), start = c(1931, 1), frequency = 12)',
+      values: P.varicelle.values, dates: monthlyDates(1931, 1, P.varicelle.values.length), freq: 'M', period: 12 },
+    precip: { id: 'precip', name: 'Précipitations mensuelles, mm (1932–1966)', short: 'précipitations', file: 'precipitations',
+      rRead: 'precip <- ts(scan("donnees/precipitations.dat"), start = c(1932, 1), frequency = 12)',
+      values: P.precipitations.values, dates: monthlyDates(1932, 1, P.precipitations.values.length), freq: 'M', period: 12 },
+    taux: { id: 'taux', name: 'Taux obligataires à 2 ans, Australie, % (1969–1994)', short: 'taux', file: 'taux_interet',
+      rRead: 'taux <- ts(scan("donnees/taux_interet.dat"), start = c(1969, 1), frequency = 12)',
+      values: P.taux.values, dates: monthlyDates(1969, 1, P.taux.values.length), freq: 'M', period: 1 },
+    nyse: { id: 'nyse', name: 'NYSE : rendements journaliers (février 1984 – décembre 1991)', short: 'NYSE', file: 'nyse',
+      rRead: 'nyse <- scan("donnees/nyse.dat")',
+      values: P.nyse, dates: null, freq: null, period: 1, t0: nyseT0, f: P.nyse.length / (1992 - nyseT0) },
+  });
+  const fileLinks = (s) => `<a href="donnees/${s.file}.dat">${s.file}.dat</a> · <a href="donnees/${s.file}.csv">${s.file}.csv</a>`;
   const EU = ['DAX', 'SMI', 'CAC', 'FTSE'];
 
   // Axe pour séries à temps décimal (EuStockMarkets : 260 jours ouvrés par an)
@@ -72,5 +90,5 @@
 
   const pct = (v) => `${UI.f2(100 * v, 1)} %`;
 
-  root.Cours = { SERIES, EU, axis, line, acfChart, exo, tpq, head, missing, tpSeries, pct };
+  root.Cours = { SERIES, EU, axis, line, acfChart, exo, tpq, head, missing, tpSeries, pct, fileLinks };
 })(window);

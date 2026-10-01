@@ -209,7 +209,9 @@
   }
 
   function datasetCsv(ds) {
-    return 'date,valeur\n' + ds.values.map((v, i) => `${ds.dates ? ds.dates[i] : i + 1},${v}`).join('\n');
+    // sans dates : une seule colonne, pour qu'un index (1, 2, …) ne soit pas pris pour une année
+    if (!ds.dates) return 'valeur\n' + ds.values.join('\n');
+    return 'date,valeur\n' + ds.values.map((v, i) => `${ds.dates[i]},${v}`).join('\n');
   }
 
   // Icônes de chapitre : dessin au trait sur une grille 24×24, couleur héritée (currentColor)

@@ -6,7 +6,7 @@
   'use strict';
   const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, esc, tick, MOIS } = root.UI;
   const { plot, complexPlane } = root.Charts;
-  const { SERIES, axis, line, acfChart, exo, tpq, head, missing } = root.Cours;
+  const { SERIES, axis, line, acfChart, exo, tpq, head, missing, fileLinks } = root.Cours;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
   const R = String.raw;
   const tx = (v, d = 2) => (v < 0 ? '-' : '') + Math.abs(v).toFixed(d).replace(/0+$/, '').replace(/\.$/, '').replace('.', '{,}');
@@ -264,9 +264,9 @@ ts.plot(x, p$pred, inf, sup, lty = c(1, 1, 2, 2), col = c(1, 2, 2, 2))`, 'R · �
         ${tpq('5', 'Même chose avec un ARIMA<sub>p,d,q</sub>.', 'Avec d = 1 la trajectoire erre sans revenir vers une moyenne (somme cumulée d’un ARMA) et l’ACF décroît très lentement depuis 1 : il faut différencier avant d’identifier p et q.')}</div>
         <div class="panel" id="ar-panel"><div class="controls">${ctl.slider('ar-a', 'a (partie AR de ΔX)', -0.9, 0.9, 0.1, 0.6)}${ctl.slider('ar-seed', 'Graine', 1, 30, 1, 2)}</div><div class="grid-3"><div id="ar-c1"></div><div id="ar-c2"></div><div id="ar-c3"></div></div></div>`)}
 
-      ${block('9.2 Identification d’un processus ARMA', missing('serie1.dat, serie2.dat', 'Ci-dessous, une série de même nature (un ARIMA simulé dont les ordres sont cachés) pour dérouler la démarche. Avec vos fichiers, le code R du bas s’applique tel quel.') + `
+      ${block('9.2 Identification d’un processus ARMA', `<p class="small">Fichiers : <a href="donnees/serie1.dat">serie1.dat</a> · <a href="donnees/serie2.dat">serie2.dat</a> (et leurs versions .csv). La solution est dans <code>donnees/SOLUTIONS_SIMULATIONS.md</code>, à n’ouvrir qu’après avoir cherché.</p>
         <div class="panel" id="id-panel">
-          <div class="controls"><button type="button" id="id-new" class="ghost">Nouvelle série</button></div>
+          <div class="controls">${ctl.select('id-src', 'Série', [['serie1', 'serie1.dat (question 1 à 6)'], ['serie2', 'serie2.dat (question 7)'], ['random', 'série d’entraînement aléatoire']], 'serie1')}<button type="button" id="id-new" class="ghost">Autre série d’entraînement</button></div>
           <div class="grid-2"><div id="id-c1"></div><div id="id-c2"></div></div>
           <div class="grid-2"><div id="id-c3"></div><div id="id-c4"></div></div>
           <div class="controls">${ctl.select('id-p', 'Modèle AR proposé', [['1', 'AR₁'], ['2', 'AR₂'], ['3', 'AR₃']], '1')}${ctl.select('id-q', 'Modèle MA proposé', [['1', 'MA₁'], ['2', 'MA₂'], ['3', 'MA₃']], '1')}<button type="button" id="id-go">Estimer et tester</button></div>
@@ -285,17 +285,19 @@ ts.plot(x, p$pred, inf, sup, lty = c(1, 1, 2, 2), col = c(1, 2, 2, 2))`, 'R · �
           ${tpq('5', 'Allonger la durée d’observation et comparer.', 'Avec 500 ou 1000 observations, les coefficients sont mieux estimés : la variance empirique se rapproche de la variance théorique \\(\\sigma^2\\sum_{j=0}^{h-1}\\psi_j^2\\). L’écart restant est l’incertitude due à l’estimation, en \\(O(1/n)\\).')}
         </div>`)}
 
-      ${block('9.4 et 9.5 Précipitations à San Francisco, taux d’intérêt au Royaume-Uni', missing('sanfran.dat, UKinterestrates.dat', 'Importez-les dans le <a href="./#labo">laboratoire de l’Atelier</a> (diagnostic, choix de modèle et prévision automatiques), ou suivez la démarche ci-dessous.') + `
-        <div class="prose"><ol><li><strong>Stationnarité</strong> : précipitations mensuelles → saison de période 12, pas de tendance : \\(\\Delta_{12}\\) ou modèle saisonnier. Taux d’intérêt → pas de saison, niveau persistant : tester une \\(\\Delta\\).</li>
-        <li><strong>AR<sub>p</sub> sur la série stationnarisée</strong> : p lu sur la PACF, validé par <code>Box.test</code> sur les résidus.</li>
-        <li><strong>SARIMA{2,0,0,12}</strong> estimé jusqu’à fin 1963 : un AR₂ sur \\(\\Delta_{12}x_t\\). Il « impose » une différence saisonnière ; vérifiez qu’elle est utile (ACF de \\(x_t\\) aux retards 12, 24).</li>
-        <li><strong>Comparer objectivement</strong> les prévisions de 1964–1966 (question 7) : erreur quadratique moyenne ou MAPE sur la période test, plutôt qu’à l’œil.</li></ol></div>`)}
+      ${block('9.4 Précipitations mensuelles, 1932–1966', `<p class="small">Fichier : ${fileLinks(SERIES.precip)}. Substitut de <code>sanfran.dat</code> : même période (1932–1966), précipitations mensuelles en mm (Hipel &amp; McLeod, 1994, région montagneuse du sud-ouest des États-Unis). Apprentissage : 1932–1963 ; test : 1964–1966.</p>
+        <div class="panel"><div class="grid-2"><div id="pr-c1"></div><div id="pr-c2"></div></div><div id="pr-c3"></div><div id="pr-tab"></div><div class="tpq-list" id="pr-q"></div></div>`)}
 
-      ${block('Corrigé sous R', rCode(`## 9.2 Identification
-# s <- ts(scan("serie1.dat")); plot(s); acf(s)        # non stationnaire
-# ds <- diff(s); plot(ds); acf(ds); pacf(ds)           # p et q candidats
-# f_ar <- arima(s, order = c(p, 1, 0)); f_ma <- arima(s, order = c(0, 1, q))
-# Box.test(f_ar$resid, lag = 20, type = "Ljung-Box", fitdf = p); c(f_ar$aic, f_ma$aic)
+      ${block('9.5 Taux d’intérêt', `<p class="small">Fichier : ${fileLinks(SERIES.taux)}. Substitut de <code>UKinterestrates.dat</code>, introuvable dans les sources publiques : taux des obligations d’État australiennes à 2 ans, mensuel, janvier 1969 – septembre 1994 (Reserve Bank of Australia). La démarche demandée est la même.</p>
+        <div class="panel"><div class="grid-2"><div id="tx-c1"></div><div id="tx-c2"></div></div><div class="grid-2"><div id="tx-c3"></div><div id="tx-c4"></div></div><div id="tx-tab"></div><div id="tx-c5"></div><div class="tpq-list" id="tx-q"></div></div>`)}
+
+      ${block('Corrigé sous R', rCode(`## 9.2 Identification (depuis la racine du dépôt)
+s <- ts(scan("donnees/serie1.dat")); plot(s); acf(s)       # non stationnaire
+ds <- diff(s); plot(ds); acf(ds); pacf(ds)                  # PACF : coupure après 1
+f_ar <- arima(s, order = c(1, 1, 0)); f_ma <- arima(s, order = c(0, 1, 1))
+Box.test(f_ar$resid, lag = 20, type = "Ljung-Box", fitdf = 1); c(AR = f_ar$aic, MA = f_ma$aic)
+s2 <- ts(scan("donnees/serie2.dat")); acf(diff(s2)); pacf(diff(s2))   # ACF : coupure après 2
+arima(s2, order = c(0, 1, 2))
 
 ## 9.3 Monte-Carlo de l'erreur de prévision d'un AR3
 a <- c(1, -1/2, 1/3); Mod(polyroot(c(1, -a)))     # tous > 1 : stationnaire
@@ -308,7 +310,30 @@ for (r in 1:R) {
 }
 colMeans(err)                 # biais par horizon
 apply(err, 2, var)            # variance empirique de l'erreur
-cumsum(ARMAtoMA(ar = a, lag.max = H - 1)^2) + 1     # variance théorique (σ² = 1)`, 'R · TP 4'))}`;
+cumsum(c(1, ARMAtoMA(ar = a, lag.max = H - 1)^2))     # variance théorique (σ² = 1)
+
+## 9.4 Précipitations : apprentissage 1932-1963, test 1964-1966
+precip <- ts(scan("donnees/precipitations.dat"), start = c(1932, 1), frequency = 12)
+train <- window(precip, end = c(1963, 12)); test <- window(precip, start = c(1964, 1))
+acf(train, lag.max = 36); acf(diff(train, lag = 12), lag.max = 36)
+ar(diff(train, lag = 12), aic = TRUE)$order                    # 24 : un AR mime mal un MA saisonnier
+f_s <- arima(train, order = c(2, 0, 0), seasonal = list(order = c(0, 1, 0), period = 12))   # SARIMA{2,0,0,12}
+Box.test(f_s$resid, lag = 24, type = "Ljung-Box", fitdf = 2)
+f_a <- arima(train, order = c(0, 0, 0), seasonal = list(order = c(0, 1, 1), period = 12))   # MA saisonnier
+prev <- list(sarima_200_12 = predict(f_s, 36)$pred, sma = predict(f_a, 36)$pred,
+             hw_saison = predict(HoltWinters(train), 36), hw_sans = predict(HoltWinters(train, gamma = FALSE), 36),
+             moyenne_mensuelle = rep(tapply(train, cycle(train), mean), 3))
+sapply(prev, function(p) sqrt(mean((as.numeric(p) - test)^2)))   # RMSE sur 1964-1966
+ts.plot(test, ts(prev$sma, start = c(1964, 1), frequency = 12), col = 1:2)
+
+## 9.5 Taux d'intérêt
+taux <- ts(scan("donnees/taux_interet.dat"), start = c(1969, 1), frequency = 12)
+plot(taux); acf(taux); tseries::adf.test(taux)
+dt <- diff(taux); acf(dt); pacf(dt)
+fits <- list(); for (p in 0:2) for (q in 0:2) fits[[paste(p, q)]] <- arima(taux, order = c(p, 1, q))
+sort(sapply(fits, AIC))[1:5]
+best <- arima(taux, order = c(1, 1, 1)); Box.test(best$resid, lag = 20, type = "Ljung-Box", fitdf = 2)
+p <- predict(best, 24); ts.plot(taux, p$pred, p$pred - 1.96 * p$se, p$pred + 1.96 * p$se, lty = c(1, 1, 2, 2))`, 'R · TP 4'))}`;
 
       // 9.1 ARIMA(1,1,0)
       const drawAR = () => {
@@ -323,16 +348,21 @@ cumsum(ARMAtoMA(ar = a, lag.max = H - 1)^2) + 1     # variance théorique (σ² 
       // 9.2 identification
       let seed = 21, truth;
       const MODELS = [{ a: [0.7], b: [] }, { a: [0.5, 0.3], b: [] }, { a: [], b: [0.7] }, { a: [], b: [0.6, 0.4] }, { a: [-0.6], b: [] }, { a: [], b: [-0.7] }];
+      const FILES = { serie1: { a: [0.7], b: [], x: root.CoursTP.serie1 }, serie2: { a: [], b: [0.6, 0.4], x: root.CoursTP.serie2 } };
       const newId = () => {
-        const r = TS.mulberry32(seed); truth = MODELS[Math.floor(r() * MODELS.length)];
-        const dx = TS.simulateArma({ phi: truth.a, theta: truth.b, n: 300, seed }); let s = 50; truth.x = dx.map((v) => (s += v));
-        plot(el.querySelector('#id-c1'), { title: 'Série à identifier', height: 200, xLabel: (i) => String(Math.round(i) + 1), layers: [line(truth.x, 'X_t')] });
+        const src = val('id-src');
+        if (src === 'random') {
+          const r = TS.mulberry32(seed); truth = { ...MODELS[Math.floor(r() * MODELS.length)] };
+          const dx = TS.simulateArma({ phi: truth.a, theta: truth.b, n: 300, seed }); let s = 50; truth.x = dx.map((v) => (s += v));
+        } else truth = FILES[src];
+        plot(el.querySelector('#id-c1'), { title: val('id-src') === 'random' ? 'Série d’entraînement' : val('id-src') + '.dat', height: 200, xLabel: (i) => String(Math.round(i) + 1), layers: [line(truth.x, 'X_t')] });
         plot(el.querySelector('#id-c2'), { title: 'Série différenciée ΔX_t', height: 200, xLabel: (i) => String(Math.round(i) + 2), layers: [line(TS.diff(truth.x), 'ΔX_t', '--s3'), { type: 'hline', value: 0 }] });
         acfChart(el.querySelector('#id-c3'), TS.diff(truth.x), 20, 'ACF de ΔX_t');
         acfChart(el.querySelector('#id-c4'), TS.diff(truth.x), 20, 'PACF de ΔX_t', { pacf: true });
         el.querySelector('#id-out').innerHTML = '';
       };
-      el.querySelector('#id-new').addEventListener('click', () => { seed += 13; newId(); });
+      el.querySelector('#id-new').addEventListener('click', () => { seed += 13; el.querySelector('#id-src').value = 'random'; newId(); });
+      el.querySelector('#id-src').addEventListener('change', newId);
       el.querySelector('#id-go').addEventListener('click', () => {
         const p = int('id-p'), q = int('id-q');
         const fa = TS.sarimaFit(truth.x, { p, d: 1 }), fm = TS.sarimaFit(truth.x, { q, d: 1 });
@@ -345,6 +375,59 @@ cumsum(ARMAtoMA(ar = a, lag.max = H - 1)^2) + 1     # variance théorique (σ² 
           `<div class="callout"><p>Choix à l’AIC parmi vos deux propositions : <strong>${best}</strong>. Le vrai processus était <strong>${tr}</strong> avec ${truth.a.length ? `a = (${truth.a.map((v) => f2(v, 1)).join(' ; ')})` : ''}${truth.b.length ? `b = (${truth.b.map((v) => f2(v, 1)).join(' ; ')})` : ''}. ${truth.a.length ? 'Indice qu’il fallait voir : PACF de ΔX qui coupe après ' + truth.a.length + ', ACF qui décroît.' : 'Indice qu’il fallait voir : ACF de ΔX qui coupe après ' + truth.b.length + ', PACF qui décroît.'}</p></div>`;
       });
       newId();
+
+      // 9.4 Précipitations
+      (() => {
+        const P = SERIES.precip, px = P.values, nTr = 32 * 12, ptr = px.slice(0, nTr), pte = px.slice(nTr), pax = axis(P);
+        const d12 = TS.diff(ptr, 12), r12x = TS.acf(ptr, 24), r12d = TS.acf(d12, 24), pAIC = TS.arYuleWalker(d12, null, 30).order;
+        const fS = TS.sarimaFit(ptr, { p: 2, D: 1, s: 12 }), lbS = TS.ljungBox(fS.resid, [24], 2)[0];
+        const fA = TS.sarimaFit(ptr, { Q: 1, D: 1, s: 12 }), lbA = TS.ljungBox(fA.resid, [24], 1)[0];
+        const clim = Array.from({ length: 12 }, (_, m) => TS.mean(ptr.filter((_, i) => i % 12 === m)));
+        const models = [
+          { name: 'SARIMA{2,0,0,12} (énoncé)', fc: fS.forecast(36).mean },
+          { name: `MA saisonnier (0,0,0)(0,1,1)₁₂, Θ = ${f2(fA.Theta[0], 2)}`, fc: fA.forecast(36).mean },
+          { name: 'Holt-Winters avec saison', fc: TS.hwRFit(ptr, { f: 12 }).predict(36, false).mean },
+          { name: 'Holt-Winters sans saison', fc: TS.hwRFit(ptr, { gamma: false }).predict(36, false).mean },
+          { name: 'Moyenne mensuelle 1932–1963', fc: Array.from({ length: 36 }, (_, k) => clim[k % 12]) },
+        ].map((m) => ({ ...m, rmse: Math.sqrt(TS.mean(m.fc.map((v, k) => (v - pte[k]) ** 2))), mae: TS.mean(m.fc.map((v, k) => Math.abs(v - pte[k]))) })).sort((a, b) => a.rmse - b.rmse);
+        plot(el.querySelector('#pr-c1'), { title: 'Précipitations mensuelles (mm)', height: 200, xLabel: pax.label, xTicks: pax.ticks, layers: [line(px, 'mm', '--s1', 0, 1)] });
+        acfChart(el.querySelector('#pr-c2'), ptr, 36, 'ACF de la série (1932–1963)');
+        const colors = root.TSModels ? root.TSModels.MODEL_COLORS : ['--s2', '--s3', '--s5', '--s4', '--ink-3'];
+        plot(el.querySelector('#pr-c3'), { title: 'Q4–Q6 · Prévisions de 1964–1966 et valeurs réelles', height: 260, xLabel: pax.label, xTicks: pax.ticks, xMin: nTr - 48,
+          layers: [{ type: 'shade', from: nTr - 0.5, to: px.length - 0.5, label: 'test' }, line(px.slice(nTr - 48), 'observé', '--s1', nTr - 48, 1.8),
+            ...models.map((m, i) => ({ type: 'line', x: m.fc.map((_, k) => nTr + k), y: m.fc, name: m.name, color: ['--s2', '--s3', '--s5', '--s4', '--ink-3'][i], dash: i > 0, width: 1.6 }))] });
+        el.querySelector('#pr-tab').innerHTML = table(['Modèle (estimé sur 1932–1963)', 'RMSE 1964–1966', 'MAE'], models.map((m) => [esc(m.name), f2(m.rmse, 2), f2(m.mae, 2)]), { numCols: [1, 2], rowClass: (_, i) => (i === 0 ? 'best' : '') });
+        const best = models[0], sar = models.find((m) => m.name.startsWith('SARIMA{2'));
+        el.querySelector('#pr-q').innerHTML = [
+          tpq('1', 'La série semble-t-elle stationnaire ? Sinon, la rendre stationnaire.', `Pas de tendance, mais une saison annuelle nette : ρ̂(12) = ${f2(r12x[12], 2)}, ρ̂(24) = ${f2(r12x[24], 2)}. La moyenne dépend du mois : la série n’est pas stationnaire au sens strict du cours. On applique \\(\\Delta_{12}\\) (ou on retire la moyenne de chaque mois).`),
+          tpq('2', 'Proposer un AR<sub>p</sub> pour la série stationnarisée et tester les résidus.', `Sur \\(\\Delta_{12}x_t\\), l’ACF vaut ${f2(r12d[12], 2)} au retard 12 et s’annule ensuite : c’est la signature d’un <strong>MA saisonnier</strong>, pas d’un AR. Le critère AIC de <code>ar()</code> réclame un ordre p = <strong>${pAIC}</strong> pour l’imiter : un AR<sub>p</sub> n’est pas adapté ici.`),
+          tpq('3', 'SARIMA{2,0,0,12} jusqu’à fin 1963 : que dire de ce choix ? Tester les résidus.', `Le modèle impose un AR₂ sur \\(\\Delta_{12}x_t\\). Ses résidus ne sont pas blancs : Ljung-Box à 24 retards, p = ${fp(lbS.pvalue)}. La différence saisonnière d’une saison <em>stable</em> crée l’auto-corrélation −0,5 au retard 12 que l’AR₂ ne sait pas représenter. Un MA saisonnier l’absorbe (Θ = ${f2(fA.Theta[0], 2)}, Ljung-Box p = ${fp(lbA.pvalue)}) ; Θ proche de −1 indique que la différence saisonnière était superflue.`),
+          tpq('4–6', 'Prévoir 1964–1966 et comparer graphiquement avec Holt-Winters, avec et sans saison.', `Holt-Winters sans saison est très mauvais (RMSE ${f2(models.find((m) => m.name.includes('sans')).rmse, 1)}) : il prévoit une constante. Les modèles saisonniers suivent le cycle annuel ; le SARIMA{2,0,0,12} a un RMSE de ${f2(sar.rmse, 1)}.`),
+          tpq('7', 'Comment répondre de façon moins subjective ?', `Avec une erreur de prévision sur la période test (RMSE, MAE). Ici le meilleur est <strong>${esc(best.name)}</strong> (RMSE ${f2(best.rmse, 2)} mm). La simple moyenne de chaque mois sur 1932–1963 fait aussi bien que les modèles plus complexes : la série est une saison stable plus un bruit, et le reste n’est pas prévisible.`),
+        ].join('');
+        root.UI.typeset(el.querySelector('#pr-q'));
+      })();
+
+      // 9.5 Taux d'intérêt
+      (() => {
+        const T = SERIES.taux, tx = T.values, H = 24, tax = axis(T, H), dt = TS.diff(tx), adf = TS.adf(tx), adfD = TS.adf(dt);
+        const grid = TS.autoSarima(tx, { d: 1, D: 0, s: 1, maxp: 2, maxq: 2 }).sort((a, b) => a.aic - b.aic);
+        const best = grid[0], lb = TS.ljungBox(best.resid, [20], best.order.p + best.order.q)[0], fc = best.forecast(H), n = tx.length;
+        plot(el.querySelector('#tx-c1'), { title: 'Taux à 2 ans (%)', height: 200, xLabel: tax.label, xTicks: tax.ticks, layers: [line(tx, 'taux', '--s1', 0, 1.3)] });
+        acfChart(el.querySelector('#tx-c2'), tx, 30, 'ACF de la série');
+        acfChart(el.querySelector('#tx-c3'), dt, 24, 'ACF de Δx_t');
+        acfChart(el.querySelector('#tx-c4'), dt, 24, 'PACF de Δx_t', { pacf: true });
+        el.querySelector('#tx-tab').innerHTML = table(['Modèle', 'AIC', 'Coefficients'], grid.slice(0, 5).map((f) => [TS.orderLabel(f.order), f2(f.aic, 2), f.coefs.map((c) => `${c.name} = ${f2(c.value, 3)}`).join(', ') || '—']), { numCols: [1], rowClass: (_, i) => (i === 0 ? 'best' : '') });
+        plot(el.querySelector('#tx-c5'), { title: `Prévision à 24 mois, ${TS.orderLabel(best.order)} (IC 95 %)`, height: 240, xLabel: tax.label, xTicks: tax.ticks, xMin: n - 120,
+          layers: [{ type: 'shade', from: n - 0.5, to: n + H, label: 'prévision' }, { type: 'band', x: fc.mean.map((_, h) => n + h), lo: fc.lo, hi: fc.hi, name: 'IC 95 %', color: '--s2', of: 'prévision' },
+            line(tx.slice(n - 120), 'taux', '--s1', n - 120, 1.5), { type: 'line', x: fc.mean.map((_, h) => n + h), y: fc.mean, name: 'prévision', color: '--s2', width: 2 }] });
+        el.querySelector('#tx-q').innerHTML = [
+          tpq('Stationnarité', 'La série est-elle stationnaire ?', `Non : l’ACF décroît très lentement et le test ADF ne rejette pas la racine unitaire (p = ${fp(adf.pvalue)}). Après une différence, ADF p = ${fp(adfD.pvalue)} : \\(\\Delta x_t\\) est stationnaire. Pas de saisonnalité visible (données financières mensuelles) : pas de \\(\\Delta_{12}\\).`),
+          tpq('Modèle', 'Quel modèle ARMA, ARIMA ou SARIMA ?', `On compare les ARIMA(p,1,q), p, q ≤ 2, par AIC : <strong>${TS.orderLabel(best.order)}</strong> arrive en tête (tableau). Ljung-Box sur ses résidus (20 retards) : p = ${fp(lb.pvalue)} ${lb.pvalue < 0.05 ? '— il reste un peu de dépendance, en partie due aux changements de régime de la politique monétaire.' : '— résidus compatibles avec un bruit blanc.'} ${TS.orderLabel(best.order) === 'ARIMA(1,1,1)' ? 'Dans R, <code>arima</code> (vraisemblance exacte) classe aussi ARIMA(1,1,1) en tête.' : 'Dans R, <code>arima</code> (vraisemblance exacte, et non moindres carrés conditionnels) classe ARIMA(1,1,1) en tête : les AIC des premiers candidats sont très proches.'}`),
+          tpq('Prévision', 'Que vaut la prévision ?', `Prévision à 24 mois : ${f2(fc.mean[H - 1], 2)} %, intervalle à 95 % [${f2(fc.lo[H - 1], 2)} ; ${f2(fc.hi[H - 1], 2)}]. L’intervalle s’élargit vite : avec d = 1, un taux d’intérêt se prévoit à peine mieux que par sa dernière valeur.`),
+        ].join('');
+        root.UI.typeset(el.querySelector('#tx-q'));
+      })();
 
       // 9.3 Monte-Carlo
       const a3 = [1, -0.5, 1 / 3];

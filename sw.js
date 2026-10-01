@@ -3,12 +3,12 @@
  * Stratégie « cache d'abord » pour les fichiers de l'application, réseau pour le reste (polices).
  * Changer VERSION à chaque publication pour forcer la mise à jour du cache.
  */
-const VERSION = 'atelier-v7';
+const VERSION = 'atelier-v8';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/stats.js', 'js/data.js', 'js/charts.js', 'js/ui.js',
   'js/ch-fondations.js', 'js/ch-modeles.js', 'js/ch-pratique.js', 'js/ch-cas.js', 'js/ch-exercices.js', 'js/app.js',
-  'cours-m2graf.html', 'js/cours/data-cours.js', 'js/cours/commun.js', 'js/cours/c-intro.js', 'js/cours/c-lissage.js',
+  'cours-m2graf.html', 'js/cours/data-cours.js', 'js/cours/data-tp.js', 'js/cours/commun.js', 'js/cours/c-intro.js', 'js/cours/c-lissage.js',
   'js/cours/c-tendance.js', 'js/cours/c-arma.js', 'js/cours/c-garch.js',
   'vendor/tex-svg-full.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',

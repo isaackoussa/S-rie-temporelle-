@@ -187,9 +187,9 @@ Box.test(na.omit(m$random), lag = 20, type = "Ljung-Box")   # Ljung-Box`, 'R · 
         ${tpq('(b)', 'La série obtenue est-elle stationnaire ? Est-ce un bruit blanc ?', `Le résidu additif garde une variance croissante. Test sur les 20 premiers retards : Box-Pierce Q = ${f2(bp.Q, 1)} (p = ${fp(bp.pvalue)}), Ljung-Box Q = ${f2(bt.Q, 1)} (p = ${fp(bt.pvalue)}). ${bt.pvalue < 0.05 ? 'On rejette l’hypothèse de bruit blanc : il reste de la dépendance, à modéliser par un ARMA.' : 'On ne rejette pas le bruit blanc.'}`)}</div>
         <div class="panel"><div class="grid-2"><div id="a-c6"></div><div id="a-c7"></div></div></div>`)}
 
-      ${block('6.2 Données simulées : retrouver le processus', `<div class="callout warn"><p>Le fichier <code>simulation.dat</code> n’est pas fourni avec le support. Voici un générateur du même type : \\(X_t = a\\,t + c\\,f\\big(\\tfrac{t\\pi}{b}\\big) + \\sigma\\epsilon_t\\) avec \\(f = \\cos\\) ou \\(\\sin\\), comme l’indique l’énoncé. À vous de deviner les paramètres.</p></div>
+      ${block('6.2 Données simulées : retrouver le processus', `<p class="small">Fichier : <a href="donnees/simulation.dat">simulation.dat</a> · <a href="donnees/simulation.csv">simulation.csv</a>. D’après l’indication de l’énoncé, le processus est de la forme \\(X_t = a\\,t + c\\,f\\big(\\tfrac{t\\pi}{b}\\big) + \\sigma\\epsilon_t\\) avec \\(f = \\cos\\) ou \\(\\sin\\). À vous de deviner les paramètres ; le bouton « Nouvelle série » tire d’autres séries du même type pour vous entraîner.</p>
         <div class="panel" id="y-panel">
-          <div class="controls"><button type="button" id="y-new" class="ghost">Nouvelle série mystère</button></div>
+          <div class="controls"><button type="button" id="y-file" class="ghost">Revenir à simulation.dat</button><button type="button" id="y-new" class="ghost">Nouvelle série d’entraînement</button></div>
           <div id="y-c1"></div><div class="grid-2"><div id="y-c2"></div><div id="y-c3"></div></div>
           <div class="controls">${ctl.number('y-a', 'pente a', '', -5, 5, 0.01)}${ctl.number('y-b', 'b (période T = 2b)', '', 1, 30, 1)}${ctl.number('y-c', 'amplitude c', '', 0, 20, 0.1)}${ctl.select('y-f', 'fonction', [['cos', 'cos'], ['sin', 'sin']], 'cos')}<button type="button" id="y-check">Vérifier</button></div>
           <div id="y-res"></div>
@@ -210,12 +210,14 @@ m <- decompose(x)                              # ou type = "multiplicative"
 plot(m); r <- na.omit(m$random)
 Box.test(r, lag = 20); Box.test(r, lag = 20, type = "Ljung-Box")
 
-## 6.2 Série simulée : démarche
-# s <- ts(scan("simulation.dat"))
-# plot(s); a <- coef(lm(s ~ seq_along(s)))[2]              # pente
-# r <- s - a * seq_along(s); spec.pgram(r, taper = 0)       # pic à la fréquence 1/(2b)
-# acf(r)                                                    # période = 2b
-# summary(lm(r ~ cos(seq_along(r) * pi / b) + sin(seq_along(r) * pi / b)))  # amplitude et phase`, 'R · TP 3'))}`;
+## 6.2 Série simulée (depuis la racine du dépôt)
+s <- scan("donnees/simulation.dat"); t <- seq_along(s)
+plot.ts(s); a <- coef(lm(s ~ t))[2]; a                   # pente
+r <- s - a * t
+p <- spec.pgram(r, taper = 0, plot = FALSE); 1 / p$freq[which.max(p$spec)]   # période T = 2b
+acf(r)                                                   # oscillation de période T
+b <- 6; summary(lm(s ~ t + cos(t * pi / b) + sin(t * pi / b)))   # amplitude, fonction, sigma
+# Solution : donnees/SOLUTIONS_SIMULATIONS.md`, 'R · TP 3'))}`;
 
       plot(el.querySelector('#a-c1'), { title: '(a)(b) Série et tendance linéaire', height: 210, xLabel: ax.label, xTicks: ax.ticks, layers: [line(x, 'AirPassengers', '--s1', 0, 1.3), line(lt.trend, 'tendance at + b', '--s2', 0, 2)] });
       plot(el.querySelector('#a-c2'), { title: '(c) Série sans tendance', height: 210, xLabel: ax.label, xTicks: ax.ticks, layers: [line(res, 'résidu'), { type: 'hline', value: 0 }] });
@@ -227,9 +229,11 @@ Box.test(r, lag = 20); Box.test(r, lag = 20, type = "Ljung-Box")
       acfChart(el.querySelector('#a-c7'), rnd, 40, 'ACF de la partie aléatoire');
 
       // Série mystère
-      let seed = 17, M = mystery(seed);
+      // simulation.dat du TP (processus documenté dans donnees/SOLUTIONS_SIMULATIONS.md)
+      const FILE = { a: 0.3, b: 6, c: 4, fn: 'cos', sd: 1.5, x: root.CoursTP.simulation, T: 12, file: true };
+      let seed = 17, M = FILE;
       const drawY = () => {
-        plot(el.querySelector('#y-c1'), { title: 'Série mystère (n = 120)', height: 220, xLabel: (i) => String(Math.round(i) + 1), layers: [line(M.x, 'X_t')] });
+        plot(el.querySelector('#y-c1'), { title: M.file ? 'simulation.dat (n = 180)' : 'Série d’entraînement (n = 120)', height: 220, xLabel: (i) => String(Math.round(i) + 1), layers: [line(M.x, 'X_t')] });
         const t = M.x.map((_, i) => i + 1), f = TS.ols(t.map((v) => [1, v]), M.x), r = f.resid;
         acfChart(el.querySelector('#y-c2'), r, 30, 'Indice : ACF de la série sans tendance linéaire');
         const per = TS.periodogram(r);
@@ -239,6 +243,7 @@ Box.test(r, lag = 20); Box.test(r, lag = 20, type = "Ljung-Box")
         ['y-a', 'y-b', 'y-c'].forEach((id) => { el.querySelector('#' + id).value = ''; });
       };
       el.querySelector('#y-new').addEventListener('click', () => { seed += 11; M = mystery(seed); drawY(); });
+      el.querySelector('#y-file').addEventListener('click', () => { M = FILE; drawY(); });
       el.querySelector('#y-check').addEventListener('click', () => {
         const ga = parseFloat(String(el.querySelector('#y-a').value).replace(',', '.')), gb = parseFloat(el.querySelector('#y-b').value), gc = parseFloat(String(el.querySelector('#y-c').value).replace(',', '.')), gf = val('y-f');
         const t = M.x.map((_, i) => i + 1), f = TS.ols(t.map((v) => [1, v]), M.x), r = f.resid;

@@ -6,7 +6,7 @@
   'use strict';
   const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, esc, tick } = root.UI;
   const { plot } = root.Charts;
-  const { SERIES, EU, axis, line, acfChart, exo, tpq, head, missing } = root.Cours;
+  const { SERIES, EU, axis, line, acfChart, exo, tpq, head, missing, fileLinks } = root.Cours;
   const D = root.CoursData;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
   const R = String.raw;
@@ -28,10 +28,10 @@
   CH.push({
     id: 'c10', icon: 'garch', short: '10 · ARCH et GARCH',
     render(el) {
-      const cac = euDs('CAC'), r = cac.values, ax = axis(cac);
+      const ny = SERIES.nyse, r = ny.values.map((v) => 100 * v), ax = axis(ny);
       el.innerHTML = head('Cours §10 · Processus ARCH et GARCH', 'Quand la variance change avec le temps',
         'Certaines séries résiduelles ont une moyenne constante mais une variance qui varie, avec des périodes calmes et des périodes agitées regroupées. Les ARIMA supposent une variance constante (homoscédasticité) : ils ne conviennent pas. Engle (1982) introduit les processus ARCH, généralisés par Bollerslev (1986) en GARCH.') + `
-      ${block('Le phénomène (figures 26 et 27)', missing('nyse.dat (bourse de New York, 1984–1991)', 'Les rendements journaliers du CAC40, fournis par R, montrent le même phénomène.') + `<div class="panel"><div id="g-c1"></div><div class="grid-2"><div id="g-c2"></div><div id="g-c3"></div></div><p class="small" id="g-t"></p></div>`)}
+      ${block('Le phénomène (figures 26 et 27)', `<p class="small">Fichier : ${fileLinks(SERIES.nyse)} — rendements journaliers de la bourse de New York, 2 février 1984 – 31 décembre 1991 (Shumway &amp; Stoffer, paquet R <code>astsa</code>, référence [6] du cours).</p><div class="panel"><div id="g-c1"></div><div class="grid-2"><div id="g-c2"></div><div id="g-c3"></div></div><p class="small" id="g-t"></p></div>`)}
 
       ${block('10.1 Définition des ARCH<sub>p</sub>', `${formula('', R`\[X_t = \epsilon_t,\qquad \epsilon_t \mid X_{t-1}, X_{t-2},\dots \sim \mathcal N(0, \sigma_t^2),\qquad \sigma_t^2 = \alpha_0 + \alpha_1X_{t-1}^2 + \dots + \alpha_pX_{t-p}^2\]<p class="small">Si les valeurs passées sont grandes en valeur absolue, la variance conditionnelle est grande : un choc est suivi d’une période de forte volatilité, d’autant plus longue que \(p\) est grand.</p>`)}` +
         exo(20, 'Pensez-vous que cela correspond à la série NYSE (figure 26) ?', R`<p>Oui. La série NYSE (comme le CAC40 ci-dessus) a une moyenne à peu près constante et nulle, mais des <strong>grappes de volatilité</strong> : les grandes variations se suivent (krach d’octobre 1987 pour le NYSE). Les rendements sont peu autocorrélés, alors que leurs carrés le sont fortement, et leur distribution a des queues plus épaisses qu’une loi normale (kurtosis > 3) : ce sont exactement les propriétés d’un ARCH (§10.3).</p>`))}
@@ -80,11 +80,11 @@ sqrt(prev)                                         # écart-type prévu, converg
       ]))}`;
 
       // Phénomène sur le CAC40
-      plot(el.querySelector('#g-c1'), { title: 'Rendements journaliers du CAC40, en % (100 · Δ log)', height: 220, xLabel: ax.label, xTicks: ax.ticks, layers: [line(r, 'rendement', '--s1', 0, 0.9), { type: 'hline', value: 0 }] });
+      plot(el.querySelector('#g-c1'), { title: 'Figure 26 · Rendements journaliers du NYSE, en %', height: 220, xLabel: ax.label, xTicks: ax.ticks, layers: [line(r, 'rendement', '--s1', 0, 0.9), { type: 'hline', value: 0 }] });
       const a1 = acfChart(el.querySelector('#g-c2'), r, 30, 'ACF des rendements X_t');
       const a2 = acfChart(el.querySelector('#g-c3'), r.map((v) => v * v), 30, 'ACF des carrés X_t²');
       const jb = TS.jarqueBera(r);
-      el.querySelector('#g-t').innerHTML = `Moyenne ${f2(TS.mean(r), 3)} %, écart-type ${f2(TS.std(r), 2)} %. Rendements : ${a1.out} auto-corrélation(s) sur 30 hors des bornes ; carrés : ${a2.out} sur 30. Skewness ${f2(jb.skew, 2)}, kurtosis <strong>${f2(jb.kurtosis, 2)}</strong> (3 pour une loi normale). Les rendements sont presque non corrélés mais pas indépendants : la volatilité se regroupe.`;
+      el.querySelector('#g-t').innerHTML = `Moyenne ${f2(TS.mean(r), 3)} %, écart-type ${f2(TS.std(r), 2)} %. Rendements : ${a1.out} auto-corrélation(s) sur 30 hors des bornes ; carrés : ${a2.out} sur 30. Skewness ${f2(jb.skew, 2)}, kurtosis <strong>${f2(jb.kurtosis, 2)}</strong> (3 pour une loi normale). Les rendements sont presque non corrélés mais pas indépendants : la volatilité se regroupe, en particulier autour du krach du 19 octobre 1987 (${f2(Math.min(...r), 1)} % en une séance).`;
 
       // Simulateur
       const drawS = () => {
@@ -143,7 +143,8 @@ sqrt(prev)                                         # écart-type prévu, converg
       ${block('11.2 EuStockMarkets : les quatre indices européens', `<div class="prose"><p>Transformation préalable indispensable : les cours ne sont pas stationnaires, on modélise les <strong>rendements</strong> \\(r_t = 100\\,(\\log x_t - \\log x_{t-1})\\). Un GARCH(1,1) est estimé pour chaque indice, puis la volatilité est prévue à 30 jours.</p></div>
         <div class="panel"><div id="eu-out" class="busy">Estimation des quatre modèles…</div><div id="eu-c"></div></div>`)}
 
-      ${block('11.3 NYSE', missing('nyse.dat', 'La démarche est celle de 11.2 : rendements, ACF de X et de X², GARCH(1,1) en premier essai, comparaison par AIC, contrôle des résidus standardisés, prévision à 30 jours.'))}
+      ${block('11.3 Données réelles : NYSE', `<p class="small">Fichier : ${fileLinks(SERIES.nyse)}. Les valeurs sont déjà des rendements ; on les multiplie par 100 (en %) pour la lisibilité des coefficients.</p>
+        <div class="panel"><div id="ny-out" class="busy">Estimation des modèles…</div><div id="ny-c1"></div><div id="ny-c2"></div><div class="tpq-list" id="ny-q"></div></div>`)}
 
       ${block('Corrigé complet sous R', rCode(`library(tseries)
 ## 11.1 Simulation d'un ARCH2
@@ -166,7 +167,17 @@ prev_sd <- function(f, x, h = 30) {
   for (k in 2:h) { v <- co["a0"] + (co["a1"] + co["b1"]) * v; out <- c(out, v) }
   sqrt(out)
 }
-sapply(colnames(r), function(j) prev_sd(g[[j]], r[, j])[c(1, 10, 30)])`, 'R · TP 5'))}`;
+sapply(colnames(r), function(j) prev_sd(g[[j]], r[, j])[c(1, 10, 30)])
+
+## 11.3 NYSE (depuis la racine du dépôt)
+nyse <- scan("donnees/nyse.dat") * 100
+par(mfrow = c(1, 2)); acf(nyse); acf(nyse^2)
+Box.test(nyse^2, lag = 10, type = "Ljung-Box")
+m <- list(arch1 = garch(nyse, order = c(0, 1), trace = FALSE), arch2 = garch(nyse, order = c(0, 2), trace = FALSE),
+          garch11 = garch(nyse, order = c(1, 1), trace = FALSE))
+sapply(m, AIC)
+summary(m$garch11)
+prev_sd(m$garch11, nyse)`, 'R · TP 5'))}`;
 
       const drawS1 = async () => {
         const out = el.querySelector('#s1-out'); out.innerHTML = '<p class="busy">Simulation et estimation…</p>'; await tick();
@@ -181,6 +192,31 @@ sapply(colnames(r), function(j) prev_sd(g[[j]], r[, j])[c(1, 10, 30)])`, 'R · T
         acfChart(out.querySelector('#s1-c3'), x2, 25, 'ACF de X_t²');
       };
       bind(el.querySelector('#s1-panel'), drawS1, { debounce: 60 }); drawS1();
+
+      // 11.3 NYSE
+      (async () => {
+        await tick();
+        const ny = SERIES.nyse, x = ny.values.map((v) => 100 * v), ax = axis(ny, 30), n = x.length;
+        const cands = [[1, 0], [2, 0], [3, 0], [1, 1], [2, 1]];
+        const fits = [];
+        for (const [p, q] of cands) { fits.push(TS.garchFit(x, p, q)); await tick(); }
+        const best = fits.reduce((a, b) => (b.aic < a.aic ? b : a)), g11 = fits[3];
+        const lbz = TS.ljungBox(g11.stdResid.map((v) => v * v), [10])[0], lbx = TS.ljungBox(x.map((v) => v * v), [10])[0];
+        const jb = TS.jarqueBera(x), jbz = TS.jarqueBera(g11.stdResid), fs = g11.forecastVar(30).map(Math.sqrt);
+        const out = el.querySelector('#ny-out'); out.className = '';
+        out.innerHTML = table(['Modèle', 'Coefficients', 'log L', 'AIC', ''], fits.map((f) => [`${f.q ? 'GARCH' : 'ARCH'}(${f.p}${f.q ? ',' + f.q : ''})`, f.coefs.map((c) => `${c.name} = ${f2(c.value, 3)}`).join(', '), f2(f.loglik, 1), f2(f.aic, 1), f === best ? pill('good', 'min AIC') : '']), { numCols: [2, 3] });
+        plot(el.querySelector('#ny-c1'), { title: 'NYSE : |rendement| et volatilité conditionnelle σ_t du GARCH(1,1)', height: 230, xLabel: ax.label, xTicks: ax.ticks,
+          layers: [line(x.map(Math.abs), '|X_t|', '--ink-3', 0, 0.7), line(g11.sigma2.map(Math.sqrt), 'σ_t', '--s2', 0, 1.5)] });
+        plot(el.querySelector('#ny-c2'), { title: 'Prévision de l’écart-type à 30 séances', height: 200, xLabel: ax.label, xTicks: ax.ticks,
+          layers: [{ type: 'shade', from: n - 0.5, to: n + 30, label: 'prévision' }, line(g11.sigma2.slice(-90).map(Math.sqrt), 'σ_t estimé', '--s2', n - 90, 1.5),
+            { type: 'line', x: fs.map((_, h) => n + h), y: fs, name: 'σ prévu', color: '--s1', width: 2 }, { type: 'hline', value: Math.sqrt(g11.uncondVar), label: 'long terme' }] });
+        el.querySelector('#ny-q').innerHTML = [
+          tpq('Identifier', 'Un processus ARCH ou GARCH est-il adapté ?', `Oui : rendements quasi non corrélés, mais carrés fortement autocorrélés (Ljung-Box sur X², 10 retards : p = ${fp(lbx.pvalue)}), et kurtosis de ${f2(jb.kurtosis, 1)}, très au-dessus de 3. Le krach d’octobre 1987 pèse lourd dans ce chiffre.`),
+          tpq('Choisir', 'Quel modèle retenir ?', `Parmi les ARCH(1–3) et GARCH(1,1), (2,1), l’AIC retient <strong>${best.q ? 'GARCH' : 'ARCH'}(${best.p}${best.q ? ',' + best.q : ''})</strong>. Le GARCH(1,1) a une persistance a1 + b1 = ${f2(g11.persistence, 3)} : la volatilité est très durable, ce que plusieurs ARCH ne capturent qu’avec beaucoup de retards. Après ajustement, Ljung-Box sur les résidus standardisés au carré : p = ${fp(lbz.pvalue)}${lbz.pvalue >= 0.05 ? ', l’hétéroscédasticité est captée' : ''} ; leur kurtosis tombe à ${f2(jbz.kurtosis, 1)}.`),
+          tpq('Prévoir', 'Prévision à 30 jours.', `L’écart-type prévu passe de ${f2(fs[0], 2)} % à J+1 à ${f2(fs[29], 2)} % à J+30, en convergeant vers le niveau de long terme \(\sqrt{a_0/(1-a_1-b_1)} = ${f2(Math.sqrt(g11.uncondVar), 2)}\) %. On prévoit la <em>volatilité</em>, pas le sens du marché : la prévision de X<sub>t</sub> elle-même reste 0.`),
+        ].join('');
+        root.UI.typeset(el.querySelector('#ny-q'));
+      })();
 
       (async () => {
         await tick();

@@ -3,9 +3,9 @@
  */
 (function (root) {
   'use strict';
-  const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, esc } = root.UI;
+  const { ctl, bind, val, num, int, block, formula, rCode, quiz, table, stats, pill, f2, fp, esc, MOIS } = root.UI;
   const { plot } = root.Charts;
-  const { SERIES, axis, line, acfChart, exo, tpq, head, missing, tpSeries } = root.Cours;
+  const { SERIES, axis, line, acfChart, exo, tpq, head, missing, tpSeries, fileLinks } = root.Cours;
   const CH = (root.CHAPTERS = root.CHAPTERS || []);
   const R = String.raw;
 
@@ -17,16 +17,16 @@
         'Cette page suit pas à pas le support de cours du Master 2 GRAF : mêmes chapitres, mêmes notations, mêmes exemples, mêmes TP. Chaque notion est complétée par une manipulation en direct, les corrections des exercices et des TP, et le code R qui s’exécute tel quel.') + `
       ${block('Correspondance avec le support', table(['Support (PDF)', 'Dans cette page', 'Ce qui est ajouté'], [
         ['§1 Introduction et premières définitions', '<a href="#c1">Chapitre 1</a>', 'nuages (x<sub>t</sub>, x<sub>t+k</sub>) interactifs, propositions 1 et 2 vérifiées numériquement, exercices 1 à 3 corrigés'],
-        ['§2 TP 1 : Introduction', '<a href="#tp1">TP 1 corrigé</a>', 'simulations en direct, outil pour votre fichier de varicelle'],
+        ['§2 TP 1 : Introduction', '<a href="#tp1">TP 1 corrigé</a>', 'simulations en direct, analyse complète du vrai fichier de varicelle'],
         ['§3 Lissages exponentiels', '<a href="#c3">Chapitre 3</a>', 'LES, LED, Holt-Winters pas à pas, choix de α par erreur test, exercices 4 à 6'],
         ['§4 TP 2 : Lissage exponentiel', '<a href="#tp2">TP 2 corrigé</a>', 'séries X1, X2, X3, co2 et CAC40 traités, tableaux d’erreurs'],
         ['§5 Tendance et saisonnalité', '<a href="#c5">Chapitre 5</a>', 'moindres carrés, moyenne mobile, différences, Box-Pierce et Ljung-Box, exercices 7 à 10'],
         ['§6 TP 3 : Tendance et saisonnalité', '<a href="#tp3">TP 3 corrigé</a>', 'AirPassengers complet, série mystère à deviner'],
         ['§7 Séries stationnaires (AR, MA, ARMA)', '<a href="#c7">Chapitre 7</a>', 'figures 18 à 25 en direct, Yule-Walker, AIC/BIC, prévision, exercices 11 à 18'],
         ['§8 ARIMA et SARIMA', '<a href="#c8">Chapitre 8</a>', 'reconstruction des prévisions, intervalles construits à la main, exercice 19'],
-        ['§9 TP 4 : ARMA et ARIMA', '<a href="#tp4">TP 4 corrigé</a>', 'identification guidée, Monte-Carlo de la prévision d’un AR<sub>3</sub>'],
+        ['§9 TP 4 : ARMA et ARIMA', '<a href="#tp4">TP 4 corrigé</a>', 'serie1 / serie2, Monte-Carlo de l’AR<sub>3</sub>, précipitations et taux d’intérêt traités'],
         ['§10 ARCH et GARCH', '<a href="#c10">Chapitre 10</a>', 'simulateur, estimation par maximum de vraisemblance, volatilité du CAC40, exercice 20'],
-        ['§11 TP 5 : ARCH et GARCH', '<a href="#tp5">TP 5 corrigé</a>', 'ARCH<sub>2</sub> simulé, GARCH sur les 4 indices européens'],
+        ['§11 TP 5 : ARCH et GARCH', '<a href="#tp5">TP 5 corrigé</a>', 'ARCH<sub>2</sub> simulé, GARCH sur les 4 indices européens et sur le NYSE'],
       ]))}
       ${block('Notations', R`<div class="prose"><p>Les notations du support sont conservées. Pour faire le lien avec l’<a href="./">Atelier</a> et avec la littérature anglo-saxonne :</p></div>` + table(['Objet', 'Ce cours', 'Atelier / R'], [
         ['Coefficients AR', '\\(a_1,\\dots,a_p\\), \\(A(z) = 1 - a_1z - \\dots - a_pz^p\\)', '\\(\\phi_1,\\dots,\\phi_p\\), <code>ar = c(...)</code>'],
@@ -43,8 +43,21 @@
         <li><strong>Critère BIC (§7.6.2).</strong> La pénalité est \(\nu\log n\) : \(\text{BIC} = -2\log L(\hat\theta) + \nu\log n\).</li>
         <li><strong>SARIMA (§8.2).</strong> Le support utilise une version simplifiée \(\text{SARIMA}_{p,d,q,T}\) : \(\Delta_T\circ\Delta^d X_t\) est un ARMA<sub>p,q</sub>. Le modèle complet ajoute une partie ARMA saisonnière d’ordres (P, D, Q) ; le chapitre 8 présente les deux.</li>
       </ul></div>`)}
-      ${block('Données', R`<div class="prose"><p>Les séries disponibles dans R (<code>USAccDeaths</code>, <code>AirPassengers</code>, <code>sunspot.year</code>, <code>co2</code>, <code>EuStockMarkets</code>) sont intégrées à la page, valeur pour valeur. Les fichiers distribués en TP (<code>varicelle</code>, <code>simulation.dat</code>, <code>serie1.dat</code>, <code>serie2.dat</code>, <code>sanfran.dat</code>, <code>UKinterestrates.dat</code>, <code>nyse.dat</code>) ne font pas partie du support : les TP proposent un outil pour coller vos fichiers, ou des séries de remplacement clairement signalées. Le <a href="./#labo">laboratoire de l’Atelier</a> accepte aussi n’importe quel CSV.</p></div>`)}
-      ${block('Avant de commencer sous R', rCode(`# Packages utilisés dans les corrections
+      ${block('Données des TP', `<div class="prose"><p>Toutes les données sont dans le dossier <code>donnees/</code> du dépôt, en <code>.dat</code> (une valeur par ligne, à lire avec <code>scan()</code> comme dans le cours) et en <code>.csv</code> (importable dans le <a href="./#labo">laboratoire de l’Atelier</a>). Le script <code>donnees/generer_donnees.R</code> les reconstruit depuis leurs sources.</p></div>` +
+        table(['Fichier', 'TP', 'Contenu', 'Source'], [
+          ['<a href="donnees/varicelle.dat">varicelle</a>', 'TP 1', 'cas mensuels de varicelle à New York, 1931–1972', 'Hipel &amp; McLeod (1994)'],
+          ['<a href="donnees/simulation.dat">simulation</a>', 'TP 3', 'série à deviner, 180 valeurs', 'simulée (solution dans <code>SOLUTIONS_SIMULATIONS.md</code>)'],
+          ['<a href="donnees/serie1.dat">serie1</a>, <a href="donnees/serie2.dat">serie2</a>', 'TP 4', 'séries à identifier, 300 valeurs', 'simulées (idem)'],
+          ['<a href="donnees/precipitations.dat">precipitations</a>', 'TP 4', 'précipitations mensuelles 1932–1966, <em>substitut de sanfran.dat</em>', 'Hipel &amp; McLeod (1994)'],
+          ['<a href="donnees/taux_interet.dat">taux_interet</a>', 'TP 4', 'taux obligataires australiens à 2 ans 1969–1994, <em>substitut de UKinterestrates.dat</em>', 'Reserve Bank of Australia'],
+          ['<a href="donnees/nyse.dat">nyse</a>', '§10, TP 5', 'rendements journaliers de la bourse de New York, 1984–1991', 'Shumway &amp; Stoffer, paquet <code>astsa</code>'],
+          ['usaccdeaths, airpassengers, co2, sunspot_year, eustock_*', 'tous', 'copies des séries fournies avec R', 'R, paquet <code>datasets</code>'],
+        ]) + `<p class="small muted">Les substituts sont de vraies séries de même nature et de même période (précipitations) ou de même type (taux d’intérêt) ; si vous avez les fichiers originaux, le code des corrigés s’applique tel quel.</p>`)}
+
+      ${block('Avant de commencer sous R', rCode(`# Placez-vous à la racine du dépôt cloné : les corrigés lisent les fichiers de donnees/
+# setwd("chemin/vers/S-rie-temporelle-")
+
+# Packages utilisés dans les corrections
 install.packages(c("tseries", "forecast"))   # garch(), adf.test() ; auto.arima(), checkresiduals()
 library(tseries)
 
@@ -189,20 +202,26 @@ sapply(1:5, function(h) sig_cours(x, h))
   CH.push({
     id: 'tp1', icon: 'tp', short: 'TP 1 · Introduction (corrigé)',
     render(el) {
+      const V = SERIES.varicelle, vs = (() => {
+        const x = V.values, monthly = Array.from({ length: 12 }, (_, m) => TS.mean(x.filter((_, i) => i % 12 === m)));
+        const peak = monthly.indexOf(Math.max(...monthly)), low = monthly.indexOf(Math.min(...monthly));
+        const yearly = []; for (let k = 0; k < 41; k++) yearly.push(TS.sum(x.slice(12 * k, 12 * k + 12)));
+        const amp = (y) => { const a = [], m = []; for (let k = 0; k < 41; k++) { const c = y.slice(12 * k, 12 * k + 12); a.push(Math.max(...c) - Math.min(...c)); m.push(TS.mean(c)); } return [a, m]; };
+        const cor = (a, b) => { const ma = TS.mean(a), mb = TS.mean(b); let s = 0, sa = 0, sb = 0; a.forEach((v, i) => { s += (v - ma) * (b[i] - mb); sa += (v - ma) ** 2; sb += (b[i] - mb) ** 2; }); return s / Math.sqrt(sa * sb); };
+        const [ar, mr] = amp(x), [al, ml] = amp(x.map(Math.log));
+        return { monthly, peak, low, peakVal: monthly[peak], lowVal: monthly[low], yearly, r: TS.acf(x, 24), corrRaw: cor(ar, mr), corrLog: cor(al, ml),
+          yMeanFirst: TS.mean(yearly.slice(0, 10)), yMeanLast: TS.mean(yearly.slice(31, 41)) };
+      })();
       el.innerHTML = head('Cours §2 · TP 1 corrigé', 'TP 1 : premiers pas avec une série temporelle',
         'Durée prévue : 2 h. Les réponses sont rédigées comme un compte-rendu : code R, résultat, interprétation.') + `
-      ${block('2.1 Données de varicelle', missing('varicelle (cas mensuels à New York, janvier 1931 – juin 1972)', 'Collez le contenu du fichier ci-dessous : l’outil répond aux cinq questions sur vos données.') + `
-        <div class="panel" id="v-panel">
-          <label class="ctl" for="v-text"><span>Valeurs du fichier (séparées par des espaces ou des retours à la ligne)</span><textarea id="v-text" data-nobind spellcheck="false" placeholder="ex. 164 314 496 ..."></textarea></label>
-          <div class="controls">${ctl.number('v-skip', 'Lignes à sauter (skip)', 0, 0, 50)}${ctl.number('v-y', 'Année de début', 1931, 1800, 2100)}${ctl.number('v-m', 'Mois de début', 1, 1, 12)}<button type="button" id="v-go">Analyser</button></div>
-          <div id="v-out"></div>
-        </div>
+      ${block('2.1 Données de varicelle', `<p class="small">Fichier : ${fileLinks(V)} (Hipel &amp; McLeod, 1994, via la Time Series Data Library). Les valeurs ci-dessous sont calculées sur ce fichier.</p>
+        <div class="panel"><div id="v-stats"></div><div id="v-c1"></div><div class="grid-2"><div id="v-c4"></div><div id="v-c2"></div></div><div class="grid-2"><div id="v-c5"></div><div id="v-c3"></div></div></div>
         <div class="tpq-list">
-          ${tpq('1', 'Créer un objet série temporelle et le représenter.', '<code>varicelle &lt;- ts(scan("varicelle.dat"), start = c(1931, 1), frequency = 12); plot.ts(varicelle)</code>')}
-          ${tpq('2', 'Analyser qualitativement la série (changer d’échelle si besoin).', 'On attend une saisonnalité annuelle très marquée (épidémies en fin d’hiver et au printemps dans les climats tempérés : l’outil ci-dessus donne le mois de pic moyen sur vos données) et une amplitude qui varie d’une année à l’autre. Si les pics sont d’autant plus hauts que le niveau est élevé, passez à l’échelle log (<code>plot(log(varicelle))</code>) : une saison qui y devient régulière signale une saisonnalité multiplicative. La tendance éventuelle se lit sur la question 5.')}
-          ${tpq('3', 'Nombre moyen mensuel de cas ?', '<code>mean(varicelle)</code> : la moyenne sur toute la période (affichée par l’outil ci-dessus avec vos données).')}
-          ${tpq('4', 'Tracer les 25 premières auto-corrélations. Que représentent les pointillés ?', 'L’ACF oscille avec une période de 12 (saisonnalité). Les pointillés sont les bornes \\(\\pm1{,}96/\\sqrt n\\) : sous l’hypothèse de bruit blanc, 95 % des auto-corrélations empiriques y tombent (voir §5.6.1).')}
-          ${tpq('5', 'Évolution annuelle du nombre de cas.', '<code>plot(aggregate(varicelle, FUN = sum))</code> : la somme par année civile élimine la saison et montre la tendance de long terme.')}
+          ${tpq('1', 'Créer un objet série temporelle et le représenter.', `<code>${esc(V.rRead)}</code> puis <code>plot.ts(varicelle)</code> : ${V.values.length} mois, de janvier 1931 à juin 1972.`)}
+          ${tpq('2', 'Analyser qualitativement la série (changer d’échelle si besoin).', `Saisonnalité annuelle très marquée : en moyenne <strong>${f2(vs.peakVal, 0)} cas en ${MOIS[vs.peak]}</strong> contre <strong>${f2(vs.lowVal, 0)} en ${MOIS[vs.low]}</strong>, soit un rapport de ${f2(vs.peakVal / vs.lowVal, 0)} entre le pic du printemps et le creux de la fin de l’été. L’amplitude des pics varie beaucoup d’une année à l’autre et grandit avec le niveau (corrélation amplitude annuelle / niveau annuel : ${f2(vs.corrRaw, 2)}). Sur l’échelle log, la saison devient beaucoup plus régulière (corrélation ${f2(vs.corrLog, 2)}) : saisonnalité <em>multiplicative</em>.`)}
+          ${tpq('3', 'Nombre moyen mensuel de cas ?', `<code>mean(varicelle)</code> = <strong>${f2(TS.mean(V.values), 1)}</strong> cas par mois sur l’ensemble de la période (médiane ${f2(TS.quantile(V.values, 0.5), 0)} : la distribution est très asymétrique à cause des pics épidémiques).`)}
+          ${tpq('4', 'Tracer les 25 premières auto-corrélations. Que représentent les pointillés ?', `L’ACF oscille avec une période de 12 : ρ̂(6) = ${f2(vs.r[6], 2)} (opposition de phase), ρ̂(12) = ${f2(vs.r[12], 2)}, ρ̂(24) = ${f2(vs.r[24], 2)}, signature d’une forte saisonnalité annuelle (proposition 2). Les pointillés sont les bornes \\(\\pm1{,}96/\\sqrt n = \\pm${f2(1.96 / Math.sqrt(V.values.length), 3)}\\) : sous l’hypothèse de bruit blanc, 95 % des auto-corrélations empiriques y tombent (§5.6.1).`)}
+          ${tpq('5', 'Évolution annuelle du nombre de cas.', `<code>aggregate(varicelle, FUN = sum)</code> donne les cas par année civile, ce qui élimine la saison. Moyenne annuelle ${f2(vs.yMeanFirst, 0)} cas sur 1931–1940 contre ${f2(vs.yMeanLast, 0)} sur 1962–1971 : ${vs.yMeanLast < vs.yMeanFirst ? 'tendance à la baisse sur la fin de la période' : 'pas de baisse sur la fin de la période'}, avec de fortes fluctuations d’une année à l’autre (années épidémiques). L’année 1972 n’a que 6 mois : elle est exclue du graphique.`)}
         </div>`)}
 
       ${block('2.2 Simulations de séries temporelles', `<div class="tpq-list">
@@ -230,32 +249,25 @@ X2 <- 0.5 * t + 2 * rnorm(100)
 X3 <- 0.5 * t + rnorm(100) + 3 * cos(t * pi / 6)
 par(mfrow = c(2, 2)); plot.ts(X2); acf(X2); plot.ts(X3); acf(X3)
 
-## 2.1 Varicelle (fichier fourni en TP)
-# varicelle <- ts(scan("varicelle.dat"), start = c(1931, 1), frequency = 12)
-# plot.ts(varicelle); plot.ts(log(varicelle)); mean(varicelle)
-# acf(varicelle, lag.max = 25)
-# plot(aggregate(varicelle, FUN = sum), main = "Cas annuels")`, 'R · TP 1'))}`;
+## 2.1 Varicelle (depuis la racine du dépôt)
+varicelle <- ts(scan("donnees/varicelle.dat"), start = c(1931, 1), frequency = 12)
+par(mfrow = c(2, 1)); plot.ts(varicelle); plot.ts(log(varicelle))   # Q1, Q2
+mean(varicelle)                                                      # Q3
+tapply(varicelle, cycle(varicelle), mean)                            # profil mensuel moyen
+acf(varicelle, lag.max = 25)                                         # Q4
+annuel <- aggregate(window(varicelle, end = c(1971, 12)), FUN = sum) # Q5 (1972 incomplète)
+plot(annuel, main = "Cas annuels")`, 'R · TP 1'))}`;
 
-      // Outil varicelle
-      el.querySelector('#v-go').addEventListener('click', () => {
-        const lines = el.querySelector('#v-text').value.split('\n').slice(int('v-skip'));
-        const v = lines.join(' ').split(/[\s,;]+/).map((s) => parseFloat(s.replace(',', '.'))).filter(Number.isFinite);
-        const out = el.querySelector('#v-out');
-        if (v.length < 24) { out.innerHTML = '<div class="callout warn"><p>Il faut au moins 24 valeurs numériques.</p></div>'; return; }
-        const ds = { values: v, dates: root.TSData.monthlyDates(int('v-y'), int('v-m'), v.length), freq: 'M', period: 12 };
-        const ax = axis(ds);
-        const y0 = int('v-y'), yearly = {};
-        ds.dates.forEach((d, i) => { const y = d.slice(0, 4); yearly[y] = (yearly[y] || 0) + v[i]; });
-        const ys = Object.keys(yearly);
-        const byMonth = new Array(12).fill(0), cnt = new Array(12).fill(0);
-        ds.dates.forEach((d, i) => { const m = +d.slice(5, 7) - 1; byMonth[m] += v[i]; cnt[m]++; });
-        const avgM = byMonth.map((s2, m) => s2 / cnt[m]), peak = avgM.indexOf(Math.max(...avgM));
-        out.innerHTML = stats([['n (mois)', v.length], ['moyenne mensuelle', f2(TS.mean(v), 1)], ['écart-type', f2(TS.std(v), 1)], ['période', `${ds.dates[0]} → ${ds.dates[v.length - 1]}`], ['mois de pic moyen', root.UI.MOIS[peak]]]) +
-          '<div id="v-c1"></div><div class="grid-2"><div id="v-c2"></div><div id="v-c3"></div></div>';
-        plot(out.querySelector('#v-c1'), { title: 'Q1 · Série', height: 220, xLabel: ax.label, xTicks: ax.ticks, layers: [line(v, 'cas')] });
-        acfChart(out.querySelector('#v-c2'), v, 25, 'Q4 · 25 premières auto-corrélations');
-        plot(out.querySelector('#v-c3'), { title: 'Q5 · Cas par année', height: 210, xLabel: (i) => ys[Math.round(i)] || '', layers: [{ type: 'bar', x: ys.map((_, i) => i), y: ys.map((y) => yearly[y]), name: 'cas', color: '--s3' }] });
-      });
+      // 2.1 Varicelle : vraies données
+      const vx = V.values, vax = axis(V), lg = vx.map((v) => Math.log(v));
+      plot(el.querySelector('#v-c1'), { title: 'Q1 · Cas mensuels de varicelle à New York', height: 230, xLabel: vax.label, xTicks: vax.ticks, layers: [line(vx, 'cas', '--s1', 0, 1.2)] });
+      plot(el.querySelector('#v-c4'), { title: 'Q2 · Échelle logarithmique', height: 200, xLabel: vax.label, xTicks: vax.ticks, layers: [line(lg, 'log(cas)', '--s3', 0, 1.1)] });
+      acfChart(el.querySelector('#v-c2'), vx, 25, 'Q4 · 25 premières auto-corrélations');
+      plot(el.querySelector('#v-c5'), { title: 'Q2 · Profil mensuel moyen', height: 200, xLabel: (j) => MOIS[Math.round(j)], xTicks: Array.from({ length: 12 }, (_, j) => j),
+        layers: [{ type: 'bar', x: vs.monthly.map((_, j) => j), y: vs.monthly, name: 'cas moyens', color: '--s1' }] });
+      plot(el.querySelector('#v-c3'), { title: 'Q5 · Cas par année (1931–1971)', height: 200, xLabel: (i) => String(1931 + Math.round(i)),
+        layers: [{ type: 'bar', x: vs.yearly.map((_, i) => i), y: vs.yearly, name: 'cas', color: '--s3' }] });
+      el.querySelector('#v-stats').innerHTML = stats([['n (mois)', vx.length], ['moyenne mensuelle', f2(TS.mean(vx), 1)], ['écart-type', f2(TS.std(vx), 1)], ['minimum', f2(Math.min(...vx), 0)], ['maximum', f2(Math.max(...vx), 0)], ['mois de pic moyen', MOIS[vs.peak]]]);
 
       // Simulations 2.2
       let seed = 1;

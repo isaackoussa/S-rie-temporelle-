@@ -79,6 +79,30 @@
     },
   ];
 
+  // Séries réelles supplémentaires (fichiers du dossier donnees/), si les scripts de données sont chargés
+  const C = root.CoursData, P = root.CoursTP;
+  const fromTs = (o) => monthlyDates(o.start[0], o.start[1], o.values.length);
+  if (C) {
+    DATASETS.push(
+      { id: 'usacc', name: 'Morts accidentelles, États-Unis (1973–1978)', short: 'USAccDeaths', values: C.USAccDeaths.values, dates: fromTs(C.USAccDeaths), freq: 'M', period: 12,
+        note: 'Série USAccDeaths de R. Saison annuelle marquée (pic en juillet), pas de tendance nette.' },
+      { id: 'co2', name: 'CO₂ à Mauna Loa, ppm (1959–1997)', short: 'co2', values: C.co2.values, dates: fromTs(C.co2), freq: 'M', period: 12,
+        note: 'Série co2 de R. Tendance croissante régulière et saison annuelle d’amplitude constante : cas d’école du modèle additif.' },
+      { id: 'sunspot', name: 'Taches solaires annuelles (1700–1988)', short: 'sunspot.year', values: C.sunspot.values,
+        dates: C.sunspot.values.map((_, i) => String(1700 + i)), freq: 'Y', period: 1, note: 'Série sunspot.year de R. Cycle d’environ 11 ans, irrégulier.' });
+  }
+  if (P) {
+    DATASETS.push(
+      { id: 'varicelle', name: 'Varicelle, New York (1931–1972)', short: 'Varicelle', values: P.varicelle.values, dates: fromTs(P.varicelle), freq: 'M', period: 12,
+        note: 'Cas mensuels déclarés à New York (Hipel & McLeod, 1994). Saison épidémique très forte au printemps.' },
+      { id: 'precip', name: 'Précipitations mensuelles, mm (1932–1966)', short: 'Précipitations', values: P.precipitations.values, dates: fromTs(P.precipitations), freq: 'M', period: 12,
+        note: 'Hipel & McLeod (1994), région montagneuse du sud-ouest des États-Unis. Saison annuelle, pas de tendance.' },
+      { id: 'taux', name: 'Taux obligataires australiens à 2 ans, % (1969–1994)', short: 'Taux 2 ans', values: P.taux.values, dates: fromTs(P.taux), freq: 'M', period: 12,
+        note: 'Reserve Bank of Australia. Niveau persistant sans saisonnalité : comportement proche d’une marche aléatoire.' },
+      { id: 'nyse', name: 'Rendements journaliers NYSE (1984–1991)', short: 'NYSE', values: P.nyse, dates: null, freq: null, period: 1,
+        note: 'Shumway & Stoffer (paquet astsa). Rendements non autocorrélés mais volatilité en grappes ; krach du 19 octobre 1987 au jour 938.' });
+  }
+
   function extendDates(dates, freq, h) {
     if (!dates) return null;
     const last = dates[dates.length - 1], out = [];
