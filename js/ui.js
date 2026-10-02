@@ -117,11 +117,16 @@
   }
   function rCode(code, title = 'R · forecast, tseries') {
     return `<div class="code"><div class="code-title">${esc(title)}</div><pre data-raw="${esc(code)}">${highlightR(code)}</pre>` +
-      `<button class="ghost copy" type="button">Copier</button></div>`;
+      `<a class="btn ghost run-r" href="console-r.html">▶ R</a><button class="ghost copy" type="button">Copier</button></div>`;
   }
   function wireCopy(rootEl) {
     $$('.code .copy', rootEl).forEach((b) => {
       b.addEventListener('click', () => copyText($('pre', b.parentElement).dataset.raw, b, $('pre', b.parentElement)));
+    });
+    // « ▶ R » : le code part dans la console R (console-r.html), qui l'exécute dès que R est prêt
+    $$('.code .run-r', rootEl).forEach((a) => {
+      a.title = 'Exécuter dans la console R';
+      a.addEventListener('click', () => store.set('console-r:handoff', { code: $('pre', a.parentElement).dataset.raw, from: document.title.split(' · ')[0] }));
     });
   }
   function copyText(text, btn, selectEl) {

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Console R · Séries temporelles</title>
+<meta name="description" content="R complet dans le navigateur (webR) : script, console, graphiques, paquets forecast et tseries, données des TP.">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1b2f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Séries temp.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/console-r.css">
+</head>
+<body class="rc">
+<header class="rc-top">
+  <a class="rc-back" href="./" aria-label="Retour à l’atelier"><img class="app-icon" src="icons/icon.svg" alt="" width="36" height="36"></a>
+  <div class="rc-title"><span>Console R</span><small id="rc-status" role="status">Démarrage…</small></div>
+  <div class="seg rc-tabs" role="tablist" aria-label="Vue">
+    <button type="button" role="tab" id="tab-script" aria-controls="pane-script" aria-pressed="false">Script</button>
+    <button type="button" role="tab" id="tab-console" aria-controls="pane-console" aria-pressed="true">Console</button>
+  </div>
+  <button class="ghost rc-menu-btn" id="rc-menu-btn" type="button" aria-expanded="false" aria-controls="rc-menu" aria-label="Outils">⋯</button>
+</header>
+
+<div class="rc-menu" id="rc-menu" hidden>
+  <label class="rc-menu-item">Exemple
+    <select id="rc-examples"><option value="">— choisir —</option></select>
+  </label>
+  <div class="rc-menu-row">
+    <input id="rc-pkg" type="text" placeholder="paquet (ex. forecast)" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button type="button" id="rc-pkg-btn">Installer</button>
+  </div>
+  <label class="btn ghost rc-file">Importer un fichier (CSV, DAT…)<input id="rc-upload" type="file" hidden></label>
+  <button type="button" class="ghost" id="rc-download-script">Enregistrer le script (.R)</button>
+  <button type="button" class="ghost" id="rc-clear">Effacer la console</button>
+  <button type="button" class="ghost" id="rc-restart">Redémarrer R</button>
+  <p class="rc-note">R 4 tourne dans votre navigateur (webR). Les fichiers des TP sont dans <code>donnees/</code>, ex. <code>scan("donnees/serie1.dat")</code>.
+    Les paquets appelés par <code>library()</code> s’installent automatiquement au premier usage.</p>
+  <a class="page-link" href="./">← Atelier Séries Temporelles</a>
+  <a class="page-link" href="cours-m2graf.html">Cours M2 GRAF (IUA) →</a>
+</div>
+
+<main class="rc-main" data-view="console">
+  <section class="rc-pane" id="pane-script" aria-labelledby="tab-script">
+    <textarea id="rc-editor" class="rc-editor" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Script R"></textarea>
+    <div class="rc-actions">
+      <button type="button" id="rc-run-all">▶ Tout exécuter</button>
+      <button type="button" class="ghost" id="rc-run-sel">▶ Ligne / sélection</button>
+    </div>
+  </section>
+  <section class="rc-pane" id="pane-console" aria-labelledby="tab-console">
+    <div class="rc-out" id="rc-out" aria-live="polite"></div>
+    <form class="rc-prompt" id="rc-form" autocomplete="off">
+      <span class="rc-ps" id="rc-ps" aria-hidden="true">&gt;</span>
+      <textarea id="rc-input" rows="1" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Commande R"></textarea>
+      <button type="submit" id="rc-send" aria-label="Exécuter">▶</button>
+    </form>
+  </section>
+</main>
+<div class="rc-keys" id="rc-keys" aria-label="Touches R"></div>
+<script src="js/console-r.js" type="module"></script>
+</body>
+</html>

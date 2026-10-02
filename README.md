@@ -64,6 +64,24 @@ Le support de cours *Introduction aux séries temporelles* (Master 2 GRAF, IUA) 
 Les fichiers des TP sont dans `donnees/` (voir ci-dessous) ; `sanfran.dat` et `UKinterestrates.dat`, introuvables,
 sont remplacés par de vraies séries de même nature, signalées comme substituts.
 
+## Console R (`console-r.html`)
+
+Un vrai R (4.x) qui tourne dans le navigateur grâce à [webR](https://docs.r-wasm.org/webr/latest/) (R compilé en
+WebAssembly), pensé pour le téléphone :
+
+- onglets **Script** (éditeur, « Tout exécuter », « Ligne / sélection », Ctrl+Entrée) et **Console** (invite `>`,
+  saisie sur plusieurs lignes avec `+`, historique ↑/↓) ; côte à côte sur grand écran ;
+- barre de touches R au-dessus du clavier : `<-`, `|>`, parenthèses, crochets, `$`, `~`, `#`… ;
+- graphiques affichés dans la console (appui long pour enregistrer l’image) ;
+- paquets installés à la demande : un `library(forecast)` ou `tseries::adf.test` télécharge le paquet
+  depuis le dépôt webR ; `install.packages()` fonctionne aussi ;
+- les fichiers de `donnees/` sont copiés dans le répertoire de travail : `scan("donnees/serie1.dat")` ;
+  menu ⋯ → importer un fichier du téléphone, exemples, enregistrer le script, redémarrer R ;
+- sur chaque bloc de code des chapitres, le bouton **▶ R** ouvre la console et exécute le code.
+
+Le premier lancement télécharge R (~25 Mo) depuis `webr.r-wasm.org` ; le service worker le garde ensuite en cache
+(`atelier-runtime`), ainsi que les paquets installés.
+
 ## Données (`donnees/`)
 
 Toutes les séries des exemples et des TP, en `.dat` (une valeur par ligne, pour `scan()`) et en `.csv` (`date,valeur`) :
@@ -111,5 +129,6 @@ js/app.js             navigation (partagée par les deux pages)
 js/cours/             chapitres et données de la page Cours M2 GRAF
 donnees/              fichiers .dat et .csv des exemples et des TP, script R de génération
 cours-m2graf.html     page Cours M2 GRAF
+console-r.html        console R (webR) : js/console-r.js, css/console-r.css
 vendor/               MathJax 3.2.2 (Apache 2.0), embarqué pour fonctionner hors ligne
 ```
