@@ -77,6 +77,13 @@ Détail des sources et des substituts dans [`donnees/README.md`](donnees/README.
 `Rscript donnees/generer_donnees.R`, qui écrit aussi `js/cours/data-tp.js` pour l’application. Les deux pages utilisent
 ces séries : la page du cours dans ses TP, l’Atelier dans tous ses chapitres et dans le laboratoire.
 
+## Modèles de scoring en R (`scoring/`)
+
+Deux grilles de score de crédit robustes, en R de base : **entreprises** (défaillance à 1 an à partir du
+bilan) et **particuliers** (défaut à 12 mois, avec audit d'équité et motifs de refus). Binning monotone,
+WoE/IV, régression logistique, validation hors période, validation croisée, bootstrap et PSI. Voir
+[`scoring/README.md`](scoring/README.md).
+
 ## Moteur numérique (`js/stats.js`)
 
 - ACF/PACF (Durbin-Levinson), bandes de Bartlett, Ljung-Box, Jarque-Bera, périodogramme
